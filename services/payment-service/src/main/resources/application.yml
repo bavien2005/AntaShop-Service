@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: payment-service
+
+momo:
+    partner-code: ${MOMO_PARTNER_CODE}
+    access-key: ${MOMO_ACCESS_KEY}
+    secret-key: ${MOMO_SECRET_KEY}
+    return-url: http://localhost:3000/
+    end-point: https://test-payment.momo.vn/v2/gateway/api
+    ipn-url: http://localhost:8085/api/momo/ipn-handler
+    request-type: captureWallet
