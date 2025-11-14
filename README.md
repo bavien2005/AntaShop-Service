@@ -184,10 +184,16 @@ GET /api/orders/user/{userId}
 
 ---
 
-# 👨‍💻 **Author**
+# 👥 Team
+
+### 👨‍💻 Leader  
 • **Nguyễn Bá Viên**  
-• Backend Developer – Spring Boot  
-• Email: nguyenbavien.26092005@gmail.com
+• 📧 **nguyenbavien.26092005@gmail.com**
+
+### 👥 Members  
+• **Nguyễn Danh Thao**  
+• **Trần Thiên Phú**
+
 
 ---
 
