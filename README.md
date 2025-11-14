@@ -1,151 +1,138 @@
-🛒 AntaShop – E-Commerce Microservices Platform
+🌐✨ AntaShop – E-Commerce Microservices Platform
 
-A modern Spring Boot microservices backend for an online fashion & footwear store.
+A modern, scalable, and modular backend system for online fashion retail.
+Designed with Spring Boot Microservices, optimized for performance & real-world production use.
 
-🚀 1. Project Overview
+<div align="center">
+🔥 Microservices Architecture • 🛒 E-Commerce Engine • ☕ Java 21 • 🧵 RabbitMQ • 🚀 Docker Ready
+</div>
+📖 Introduction
 
-AntaShop is a full-featured e-commerce backend built using a Microservices Architecture with Spring Boot (JDK 21).
-The platform is designed for scalability, modularity, and clean separation of business domains.
-It powers an online store selling shoes, clothing, and accessories, and integrates all essential e-commerce features such as:
+AntaShop is a complete backend platform for an e-commerce system focused on shoes, clothing, and accessories.
+Built using Spring Boot, Microservices, and modern cloud-ready design, the system provides clean domain separation, high scalability, and flexibility for integration with any frontend (React, Next.js, Flutter…).
 
-Product & category management
+🔍 Key objectives:
 
-Shopping cart
+Create a modular e-commerce system separated into independent microservices.
 
-Order processing
+Apply real-world engineering concepts: asynchronous messaging, secure authentication, REST API standards.
 
-Payment flow
+Support growth in traffic with caching, message queues, and distributed architecture.
 
-Authentication & authorization
+Provide a strong backend foundation for a large-scale e-commerce project.
 
-Notification & email service
+🏗️ System Architecture
 
-File & cloud storage
-
-This backend is optimized for modern frontends such as React/Vite, Next.js, or mobile applications.
-
-🧩 2. Tech Stack
-Component	Technology
-Language	Java 21 (JDK 21)
-Framework	Spring Boot
-Build Tool	Maven
-Database	MySQL (utf8mb4 / InnoDB)
-Message Queue	RabbitMQ
-Cache	Redis
-Security	JWT, Spring Security
-Architecture	RESTful Microservices
-Containerization	Docker / Docker Compose
-IDE (recommended)	IntelliJ IDEA
-🏗️ 3. Microservices Structure
-
-The project is organized into independent services:
+Below is the complete ecosystem of AntaShop:
 
 /services
- ├── cart-service
- ├── category-service
- ├── cloud-service
- ├── identity-service
- ├── notification-service
- ├── order-service
- ├── payment-service
- ├── product-service
+ ├── identity-service        → Authentication, JWT, user management
+ ├── product-service         → Products, attributes, inventory
+ ├── category-service        → Category trees, filters
+ ├── cart-service            → Shopping cart, Redis caching
+ ├── order-service           → Orders, delivery, workflows
+ ├── payment-service         → Payment flow, transactions
+ ├── notification-service    → Email, OTP, async events (RabbitMQ)
+ └── cloud-service           → Image/file uploads
 
+🗺️ High-Level Architecture Diagram
+flowchart LR
+    A[Frontend<br/>(React / NextJS / Mobile)] -->|REST API| B(API Gateway - optional)
 
-Each service contains its own:
+    B --> C1[Identity Service]
+    B --> C2[Product Service]
+    B --> C3[Category Service]
+    B --> C4[Cart Service]
+    B --> C5[Order Service]
+    B --> C6[Payment Service]
+    B --> C7[Notification Service]
+    B --> C8[Cloud Service]
 
-Controllers
+    C7 <-->|Asynchronous Events| R[(RabbitMQ)]
+    C4 -->|Caching| D[(Redis)]
+    C1 -->|User DB| M1[(MySQL)]
+    C2 -->|Products DB| M2[(MySQL)]
+    C5 -->|Orders DB| M3[(MySQL)]
 
-Services & business logic
+🛠️ Tech Stack
+🌍 Backend
+Tech	Purpose
+Java 21	Modern Java features, high performance
+Spring Boot 3	Core framework for all microservices
+Spring Security + JWT	Authentication & authorization
+Spring Data JPA	ORM & database operations
+Maven	Dependency management
+🗄️ Databases
 
-Repository layer
+MySQL (main relational DB)
 
-Configuration
+Supports UTF8MB4 and InnoDB
 
-Independent pom.xml
+⚡ Performance / Messaging
 
-Separate database schema (if required)
+RabbitMQ → async events (email, orders, OTP)
 
-🔐 4. Authentication & Authorization
+Redis → caching for cart & performance boost
 
-The platform implements:
+🐳 DevOps
 
-JWT-based authentication
+Docker
 
-Role-based access control (User, Admin)
+Docker Compose
 
-Secure password hashing (BCrypt)
+Environment-based configuration
 
-Optional OTP email verification (via Notification Service)
+🔐 Security Layer
 
-📦 5. Core Features
-✅ Product & Category Management
+The system includes enterprise-level security:
 
-CRUD products
+✔ JWT token authentication
+✔ Role-based access control (Admin/User)
+✔ Password hashing with BCrypt
+✔ Secure route protection
+✔ OTP email verification (via Notification Service)
 
-Product variants
+🧠 Core Features
+🛍️ E-Commerce
 
-Category hierarchy
+Product catalog & categories
 
-Inventory tracking
+Product variants (size, color…)
 
-🛒 Cart Service
+Cart operations (add/remove/update)
 
-Add/remove items
+Order placement & tracking
 
-Auto-sync between devices
+Payment transaction flow
 
-Redis caching for fast performance
+👤 User Management
 
-📦 Order Service
+Registration & login
 
-Create orders
+Token-based authentication
 
-Order status workflow
+Profile updates
 
-Payment integration hooks
+📩 Notifications
 
-💳 Payment Service
-
-Payment request creation
-
-Payment gateway callbacks
-
-Transaction logs
-
-🔔 Notification Service
-
-Asynchronous email sending (RabbitMQ)
+Email sending
 
 OTP codes
 
-Order confirmation emails
+System alerts
 
-☁️ Cloud Service
+RabbitMQ event-driven architecture
 
-File upload (images/videos)
+☁️ Cloud / Media
 
-Cloud storage integration (optional)
+Image upload
 
-🗄️ 6. Database
+Local or external cloud storage
 
-MySQL is used as the primary database.
+File validation
 
-Each microservice manages its own schema for full decoupling.
-
-Naming convention: service_name_table_name.
-
-📬 7. Message Queue (RabbitMQ)
-
-RabbitMQ is used for:
-
-Asynchronous email notifications
-
-OTP sending
-
-Event-driven communication between services
-
-⚙️ 8. Build & Run
-Requirements
+🧪 Installation & Setup
+🔧 Requirements
 
 JDK 21
 
@@ -155,29 +142,43 @@ MySQL 8+
 
 RabbitMQ
 
-Redis (optional but recommended)
+Redis (optional)
 
-Build
+▶️ Build the project
 mvn clean install
 
-Run a specific service
+▶️ Run any microservice
 cd identity-service
 mvn spring-boot:run
 
-Run with Docker Compose (if configured)
+▶️ Run with Docker
 docker-compose up --build
 
-📁 9. Project Goals
+📁 Folder Structure Overview
+AntaShop-Service
+ ├── services
+ │    ├── identity-service
+ │    ├── product-service
+ │    ├── category-service
+ │    ├── cart-service
+ │    ├── order-service
+ │    ├── payment-service
+ │    ├── notification-service
+ │    └── cloud-service
+ ├── README.md
+ └── docker-compose.yml (optional)
 
-Build a scalable real-world e-commerce backend
+🎯 Project Goals
 
-Apply clean microservices architecture
+Build a production-ready e-commerce backend.
 
-Practice RabbitMQ, Redis, Docker, Spring Security, and more
+Practice advanced microservice architecture.
 
-Support production-ready frontends
+Utilize Docker, Redis, RabbitMQ, and distributed design.
 
-🙌 10. Contributions
+Create a backend prepared for future scaling.
 
-Contributions, issues, and feature requests are welcome.
-Feel free to open a pull request!
+🤝 Contributions
+
+All contributions are welcome!
+Submit a Pull Request or open an Issue if you want to propose new features or fixes.
