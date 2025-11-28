@@ -31,6 +31,5 @@ public class User {
 
     @Column(name = "phone_number", nullable = false, unique = true, length = 15)
     private String phoneNumber;
-
 }
 

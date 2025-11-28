@@ -33,7 +33,7 @@ public class OtpRedisService {
         return "otp:attempts:" + email;
     }
 
-    //Tạo OTP, lưu Redis (keyOtp TTL=2m),cooldown 60s (keyCooldown TTL=60s)
+    //cooldown 60s
     public String generateAndSave(String rawEmail) {
         String email = norm(rawEmail);
 

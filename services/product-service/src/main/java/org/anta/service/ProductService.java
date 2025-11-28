@@ -97,15 +97,26 @@ public class ProductService {
             entity.setImages(List.of());
         }
 
-
-        log.info("Saving product name={} variantsCount={} totalStock={}",
-                entity.getName(),
-                entity.getVariants() == null ? 0 : entity.getVariants().size(),
-                entity.getTotalStock());
+        if (entity.getVariants() != null && !entity.getVariants().isEmpty()) {
+            int total = entity.getVariants().stream()
+                    .mapToInt(v -> v.getStock() == null ? 0 : v.getStock())
+                    .sum();
+            entity.setTotalStock(total);
+        } else {
+            if (productRequest.getTotalStock() != null) {
+                entity.setTotalStock(productRequest.getTotalStock());
+            } else {
+                entity.setTotalStock(0);
+            }
+        }
 
         var saved = productRepository.save(entity);
 
-        return productMapper.toResponse(saved);
+        ProductResponse resp = productMapper.toResponse(saved);
+        if (resp.getImages() != null && !resp.getImages().isEmpty()) {
+            resp.setThumbnail(resp.getImages().get(0));
+        }
+        return resp;
     }
 
     @Transactional

@@ -1,0 +1,77 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+
+  cloud:
+    gateway:
+
+      # ---- Global CORS configuration for Gateway (use this, NOT a CorsWebFilter bean) ----
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            # explicit origins (FE origins you use)
+            allowedOrigins:
+              - "http://localhost:5173"
+              - "http://127.0.0.1:5173"
+              - "http://localhost:3000"
+              - "http://127.0.0.1:3000"
+            # pattern fallback (optional, helpful during dev)
+            allowedOriginPatterns:
+              - "http://localhost:*"
+              - "http://127.0.0.1:*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      # ---- Routes ----
+      routes:
+        - id: identity-auth
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/auth/**
+
+        - id: identity-users
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/users/**
+
+        - id: identity-address
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/address/**
+        - id: identity-verify
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/auth/verify/**
+        - id: notification-auth
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/notifications/**
+
+# logging as you had
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    # optionally make your filters more verbose
+    org.anta.filter: INFO
+
+# Enable actuator endpoints so you can inspect routes
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env,metrics,loggers,gateway
+  endpoint:
+    gateway:
+      enabled: true

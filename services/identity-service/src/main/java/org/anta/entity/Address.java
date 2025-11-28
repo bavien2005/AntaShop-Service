@@ -44,7 +44,6 @@ public class Address {
     @JoinColumn(name = "user_id")
     private User user;
 
-
     @PrePersist
     protected void onCreate(){
         createdAt = LocalDateTime.now();

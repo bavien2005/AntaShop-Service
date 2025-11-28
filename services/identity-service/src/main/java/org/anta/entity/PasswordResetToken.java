@@ -33,6 +33,4 @@ public class PasswordResetToken {
             columnDefinition = "timestamp default current_timestamp")
     private LocalDateTime createdAt;
 
-
-
 }

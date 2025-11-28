@@ -31,8 +31,6 @@ public class ProductController {
 
     @PostMapping("/add")
     public ResponseEntity<ProductResponse> addProduct(@RequestBody ProductRequest productRequest){
-        log.info("ADD productRequest: {}", productRequest);            // <-- log toàn bộ DTO
-        log.info("variants: {}", productRequest.getVariants());
         ProductResponse productResponse = productService.addProduct(productRequest);
         return ResponseEntity.ok(productResponse);
     }

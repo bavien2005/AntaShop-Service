@@ -33,10 +33,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path.startsWith("/api/auth/");
+        String servletPath = request.getServletPath() == null ? "" : request.getServletPath();
+        String uri = request.getRequestURI() == null ? "" : request.getRequestURI();
+        log.debug("shouldNotFilter? servletPath='{}' uri='{}'", servletPath, uri);
+        return servletPath.startsWith("/api/auth/") || uri.startsWith("/api/auth/");
     }
-
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -57,8 +58,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 name = jwtUtil.extractUsername(token);
             } catch (Exception e) {
                 log.warn("Failed to extract name from token: {}", e.getMessage());
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
+                // nếu là endpoint public, không trả lỗi cứng; cho tiếp filter chain
+                if (path.startsWith("/api/auth/")) {
+                    filterChain.doFilter(request, response);
+                    return;
+                } else {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
             }
         } else {
             filterChain.doFilter(request, response);

@@ -42,7 +42,7 @@ public class FileMetadata {
     @Column(name = "uploaded_at", nullable = false)
     private LocalDateTime uploadedAt;
 
-    @Column(name="IsMain" )
+    @Column(name="is_main")
     private Boolean isMain;
 
     @PrePersist

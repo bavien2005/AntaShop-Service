@@ -28,6 +28,7 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="gateway-service" />
         <module name="payment-service" />
       </profile>
       <profile name="Annotation profile for identity-service" enabled="true">
@@ -82,6 +83,7 @@
       <module name="cart-service" options="-parameters -Amapstruct.defaultComponentModel=spring -parameters" />
       <module name="category-service" options="-parameters -Amapstruct.defaultComponentModel=spring -parameters" />
       <module name="cloud-service" options="-parameters" />
+      <module name="gateway-service" options="-parameters" />
       <module name="identity-service" options="-parameters" />
       <module name="notification-service" options="-parameters" />
       <module name="order-service" options="-parameters" />
