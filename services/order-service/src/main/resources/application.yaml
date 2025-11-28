@@ -4,9 +4,9 @@ server:
     context-path: /order_db
 spring:
   datasource:
-    url: "jdbc:mysql://localhost:3306/order_service?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
-    username: nguyenbavien
-    password: nguyenbavien
+    url: ${DB_URL:}
+    username: ${DB_USER:}
+    password: ${DB_PASS:}
   jpa:
     hibernate:
       ddl-auto: update

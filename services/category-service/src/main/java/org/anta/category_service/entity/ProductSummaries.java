@@ -10,15 +10,18 @@ import org.anta.category_service.enums.Status;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "products")
+@Table(name = "productSummaries")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Product {
+public class ProductSummaries {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name= "product_id" , nullable = false)
+    private Long productId;
 
     private String name;
 
@@ -32,6 +35,8 @@ public class Product {
     private Integer stock;
     private String imageUrl;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private Status status = Status.ACTIVE; // 4 trang thai ACTIVE, INACTIVE (ko ban)
     // , OUT_OF_STOCK(het hang), DELETED(da xoa)
 
@@ -39,6 +44,14 @@ public class Product {
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_at")
+    private LocalDateTime createdAt ;
+
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate(){
+        createdAt = LocalDateTime.now();
+    }
 }

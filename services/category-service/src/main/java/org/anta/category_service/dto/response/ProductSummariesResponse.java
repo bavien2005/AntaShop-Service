@@ -5,8 +5,9 @@ import org.anta.category_service.enums.Status;
 
 import java.time.LocalDateTime;
 @Data
-public class ProductResponse {
+public class ProductSummariesResponse {
     private Long id;
+    private Long productId;
     private String name;
     private String slug;
     private String description;
@@ -14,7 +15,6 @@ public class ProductResponse {
     private Integer stock;
     private String imageUrl;
     private Status status;
-    private Long categoryId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

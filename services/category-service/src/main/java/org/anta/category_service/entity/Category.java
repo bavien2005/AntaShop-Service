@@ -30,7 +30,7 @@ public class Category {
     private Category parent;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
-    private List<Product> products;
+    private List<ProductSummaries> productSummaries;
 
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt;
