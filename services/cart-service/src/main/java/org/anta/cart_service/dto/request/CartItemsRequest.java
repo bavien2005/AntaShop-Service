@@ -5,8 +5,8 @@ import org.anta.cart_service.entity.Carts;
 
 @Data
 public class CartItemsRequest {
-    private Long userId;
-    private String sessionId;
+    private Long userId; // khach hang da login
+    private String sessionId; // khach hang ch dang nhap
     private Long productId;
     private Long variantId;
     private String productName;
