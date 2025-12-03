@@ -24,9 +24,7 @@ public class CloudService {
     private final Cloudinary cloudinary;
 
     public List<FileMetadata> uploadMultiple(List<MultipartFile> files , Long uploaderId)  {
-
         List<FileMetadata> results = new ArrayList<>();
-
         for (MultipartFile file : files) {
             try {
                 Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
@@ -40,23 +38,25 @@ public class CloudService {
                         .url(url)
                         .productId(null)
                         .uploaderId(uploaderId)
+                        .format(format)
+                        .resourceType(resourceType)
                         .uploadedAt(LocalDateTime.now())
+                        .isMain(false)
                         .build();
 
                 metadata = fileMetadataRepository.save(metadata);
-
                 results.add(metadata);
 
             } catch (IOException e) {
                 throw new RuntimeException("Failed to upload file: " + file.getOriginalFilename(), e);
             }
         }
-
         return results;
     }
 
     @Transactional
     public void assignImagesToProduct(Long productId, List<Long> imageIds) {
+        if (imageIds == null || imageIds.isEmpty()) return;
         fileMetadataRepository.updateProductIds(productId, imageIds);
     }
 
@@ -66,7 +66,20 @@ public class CloudService {
 
     @Transactional
     public void cleanUnusedFiles() {
-        fileMetadataRepository.deleteOldTempFiles();
+        // delete DB rows older than cutoff and delete actual files from Cloudinary
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(3); // configurable
+        List<FileMetadata> toDelete = fileMetadataRepository.findByProductIdIsNullAndUploadedAtBefore(cutoff);
+
+        for (FileMetadata f : toDelete) {
+            try {
+                if (f.getPublicId() != null) {
+                    cloudinary.uploader().destroy(f.getPublicId(), ObjectUtils.emptyMap());
+                }
+            } catch (Exception ex) {
+                // log but continue
+            }
+        }
+        fileMetadataRepository.deleteTempFilesOlderThan(cutoff);
     }
 
 }

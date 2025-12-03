@@ -18,20 +18,15 @@ public class CloudController {
 
     private final CloudService cloudService;
 
-
-    @GetMapping("/product/productId:/{productId}")
-    public ResponseEntity<Map<List<FileMetadata> , String> >getFilesByProductId(
-            @PathVariable Long productId) {
-
-        return ResponseEntity.ok(Map.of(cloudService.getByProductId(productId) ,
-                "File retrieval Successful"));
+    @GetMapping("/product/{productId}")
+    public ResponseEntity<List<FileMetadata>> getFilesByProductId(@PathVariable Long productId) {
+        return ResponseEntity.ok(cloudService.getByProductId(productId));
     }
 
-
     @PostMapping("/upload-multiple")
-    public ResponseEntity<List<FileMetadata>>uploadFile(
-              @RequestParam("files") List<MultipartFile> files ,
-              @RequestParam("uploaderId") Long uploaderId) {
+    public ResponseEntity<List<FileMetadata>> uploadFile(
+            @RequestParam("files") List<MultipartFile> files ,
+            @RequestParam("uploaderId") Long uploaderId) {
         return ResponseEntity.ok(cloudService.uploadMultiple(files, uploaderId));
     }
 

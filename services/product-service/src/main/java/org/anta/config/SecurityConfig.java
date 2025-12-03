@@ -17,10 +17,10 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(Customizer.withDefaults())       // ⭐ đúng cú pháp mới
-                .csrf(csrf -> csrf.disable())          // ⭐ disable CSRF đúng kiểu lambda
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()      // dev: cho phép tất cả
+                        .anyRequest().permitAll()
                 );
 
         return http.build();

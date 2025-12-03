@@ -10,7 +10,9 @@ import reactor.core.publisher.Mono;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 
 import java.net.URI;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class DebugForwardLoggingFilter implements GlobalFilter, Ordered {
@@ -18,14 +20,25 @@ public class DebugForwardLoggingFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, org.springframework.cloud.gateway.filter.GatewayFilterChain chain) {
-        List<URI> forwarded = exchange.getAttribute(ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR);
+        Object forwardedObj = exchange.getAttribute(ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR);
         String path = exchange.getRequest().getURI().getPath();
-        log.info("[GATEWAY DEBUG] incoming={}, willForwardTo={}", path, (forwarded==null? "null": forwarded));
+
+        String willForwardTo;
+        if (forwardedObj == null) {
+            willForwardTo = "null";
+        } else if (forwardedObj instanceof List) {
+            willForwardTo = ((List<?>) forwardedObj).toString();
+        } else {
+            willForwardTo = forwardedObj.toString();
+        }
+
+        log.info("[GATEWAY DEBUG] incoming={}, willForwardTo={}", path, willForwardTo);
         return chain.filter(exchange);
     }
 
     @Override
     public int getOrder() {
-        return -50;
+        // đặt sau nhiều filter khác để chắc chắn route đã resolved
+        return Ordered.LOWEST_PRECEDENCE;
     }
 }

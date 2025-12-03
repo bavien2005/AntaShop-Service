@@ -74,7 +74,6 @@ public class AuthService {
 
         return user;
     }
-
     @Transactional
     public String createResetCode(String email) {
         User user = userRepository.findByEmail(email)
@@ -97,6 +96,7 @@ public class AuthService {
                 .build());
         return resetCode;
     }
+
 
     @Transactional
     public boolean verifyResetCode(String email, String code) {

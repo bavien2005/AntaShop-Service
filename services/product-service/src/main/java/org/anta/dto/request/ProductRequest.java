@@ -25,6 +25,8 @@ public class ProductRequest {
 
     private List<String> images;
 
+    private List<Long> imageIds;
+
     private List<ProductVariantRequest> variants;
 
 }

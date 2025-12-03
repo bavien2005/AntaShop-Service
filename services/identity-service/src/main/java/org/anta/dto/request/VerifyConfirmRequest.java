@@ -7,9 +7,10 @@ import lombok.Data;
 
 @Data
 public class VerifyConfirmRequest {
+
     @NotBlank @Email
     private String email;
 
     @NotBlank
-    private String otp; // 6 digits
+    private String otp;
 }

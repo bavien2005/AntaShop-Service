@@ -16,10 +16,12 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
     private final JwtUtil jwtUtil;
 
-    // những prefix public (bỏ qua filter)
     private final List<String> openPrefixes = List.of(
             "/api/auth",
+            "/api/product",
             "/api/public",
+            "/api/products",
+            "/api/cloud",
             "/actuator"
     );
 
@@ -31,12 +33,14 @@ public class AuthFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
+        // if any prefix matches (startsWith) -> skip auth
         for (String p : openPrefixes) {
-            if (path.equals(p) || path.startsWith(p + "/")) {
+            if (path.startsWith(p)) {
                 return chain.filter(exchange);
             }
         }
 
+        // then normal JWT check
         String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
@@ -58,7 +62,6 @@ public class AuthFilter implements GlobalFilter, Ordered {
                 .build();
 
         ServerWebExchange newExchange = exchange.mutate().request(mutated).build();
-
         return chain.filter(newExchange);
     }
 

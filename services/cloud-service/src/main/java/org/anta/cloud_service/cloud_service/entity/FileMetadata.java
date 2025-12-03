@@ -27,7 +27,7 @@ public class FileMetadata {
     @Column(name = "uploader_id", nullable = false)
     private Long uploaderId;
 
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "product_id", nullable = true)
     private Long productId;
 
     @Column(name = "public_id")
