@@ -7,12 +7,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ProductVariantRepository extends JpaRepository<ProductVariant , Long> {
 
     List<ProductVariant> findByProductId(Long productId);
 
     boolean existsBySku(String sku);
+
+    Optional<ProductVariant> findBySku(String sku);
 
     @Modifying
     @Query("UPDATE ProductVariant v SET v.stock = v.stock - :qty WHERE v.id = :id AND v.stock >= :qty")

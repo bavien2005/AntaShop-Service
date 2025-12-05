@@ -20,6 +20,7 @@ public interface ProductMapper {
     Product toEntity(ProductRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "variants", ignore = true)
     void updateFromRequest(ProductRequest request, @MappingTarget Product product);
 
     @AfterMapping

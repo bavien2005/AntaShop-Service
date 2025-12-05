@@ -7,6 +7,8 @@ import java.util.Map;
 @Data
 public class ProductVariantRequest {
 
+    private Long id;
+
     private Long productId;
 
     private String sku;

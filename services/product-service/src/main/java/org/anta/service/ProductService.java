@@ -3,6 +3,7 @@ package org.anta.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.anta.dto.request.ProductRequest;
+import org.anta.dto.request.ProductVariantRequest;
 import org.anta.dto.response.FileMetadataDto;
 import org.anta.dto.response.ProductResponse;
 import org.anta.entity.Product;
@@ -19,10 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -237,14 +235,127 @@ public class ProductService {
 
 
     @Transactional
-    public ProductResponse updateProduct(Long id , ProductRequest productRequest){
-
+    public ProductResponse updateProduct(Long id, ProductRequest productRequest){
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
 
+        // 1) cập nhật các field cơ bản (không chạm variants collection structure)
         productMapper.updateFromRequest(productRequest, product);
-        return productMapper.toResponse(productRepository.save(product));
+
+        // 2) load existing variants from DB (we will operate on product.getVariants() - the managed collection)
+        List<ProductVariant> managed = product.getVariants();
+        if (managed == null) {
+            managed = new ArrayList<>();
+            product.setVariants(managed); // set the managed collection if null
+        }
+
+        // Build helper maps from managed collection
+        Map<Long, ProductVariant> managedById = managed.stream()
+                .filter(v -> v.getId() != null)
+                .collect(Collectors.toMap(ProductVariant::getId, v -> v));
+
+        Map<String, ProductVariant> managedBySku = managed.stream()
+                .filter(v -> v.getSku() != null)
+                .collect(Collectors.toMap(ProductVariant::getSku, v -> v));
+
+        // Prepare list of incoming variants (from request) mapped to actions
+        List<ProductVariant> incoming = new ArrayList<>();
+        if (productRequest.getVariants() != null) {
+            for (ProductVariantRequest vReq : productRequest.getVariants()) {
+                ProductVariant match = null;
+                if (vReq.getId() != null) {
+                    match = managedById.get(vReq.getId());
+                }
+                if (match == null && vReq.getSku() != null) {
+                    match = managedBySku.get(vReq.getSku());
+                }
+
+                if (match != null) {
+                    // update fields on the managed entity (don't replace the object)
+                    productVariantMapper.updateFromRequest(vReq, match);
+                    incoming.add(match);
+                    // remove from helper maps so remaining ones are deletions
+                    if (match.getId() != null) managedById.remove(match.getId());
+                    if (match.getSku() != null) managedBySku.remove(match.getSku());
+                } else {
+                    // create new variant (transient) and set parent
+                    ProductVariant nv = productVariantMapper.toEntity(vReq);
+                    nv.setProduct(product);
+                    incoming.add(nv);
+                }
+            }
+        }
+
+        // 3) Remove orphans from the managed collection (those left in managedById / managedBySku)
+        Set<Long> idsToRemove = new HashSet<>(managedById.keySet());
+        // iterate managed collection and remove items whose id is in idsToRemove OR not present in incoming (by id/sku)
+        Iterator<ProductVariant> it = managed.iterator();
+        while (it.hasNext()) {
+            ProductVariant mv = it.next();
+            boolean shouldRemove = false;
+            if (mv.getId() != null && idsToRemove.contains(mv.getId())) {
+                shouldRemove = true;
+            } else {
+                // also check if this managed item is not present in incoming by id/sku
+                boolean presentInIncoming = incoming.stream().anyMatch(i ->
+                        (i.getId() != null && i.getId().equals(mv.getId())) ||
+                                (i.getSku() != null && i.getSku().equals(mv.getSku()))
+                );
+                if (!presentInIncoming) shouldRemove = true;
+            }
+            if (shouldRemove) {
+                it.remove(); // this triggers orphan removal when transaction flushes
+            }
+        }
+
+        // 4) Add new incoming variants to managed collection (only those without id or not already present)
+        for (ProductVariant inv : incoming) {
+            boolean exists = false;
+            if (inv.getId() != null) {
+                exists = managed.stream().anyMatch(m -> Objects.equals(m.getId(), inv.getId()));
+            } else if (inv.getSku() != null) {
+                exists = managed.stream().anyMatch(m -> Objects.equals(m.getSku(), inv.getSku()));
+            }
+            if (!exists) {
+                // ensure parent set
+                inv.setProduct(product);
+                managed.add(inv);
+            }
+        }
+
+        // 5) (Optional) validate SKU uniqueness globally before flush/save
+        for (ProductVariant v : managed) {
+            if (v.getSku() == null) continue;
+            Optional<ProductVariant> found = productVariantRepository.findBySku(v.getSku());
+            if (found.isPresent() && v.getId() != null && !Objects.equals(found.get().getId(), v.getId())) {
+                throw new RuntimeException("SKU already exists: " + v.getSku());
+            }
+            if (found.isPresent() && v.getId() == null && !Objects.equals(found.get().getProduct().getId(), product.getId())) {
+                throw new RuntimeException("SKU already exists in another product: " + v.getSku());
+            }
+        }
+
+        // 6) recompute totalStock from managed collection
+        int total = managed.stream().mapToInt(v -> v.getStock() == null ? 0 : v.getStock()).sum();
+        product.setTotalStock(total);
+
+        // 7) save product (Hibernate will detect adds/updates/deletes on managed collection and act accordingly)
+        Product saved = productRepository.save(product);
+
+        // build response (same as before)
+        ProductResponse resp = productMapper.toResponse(saved);
+        List<ProductVariant> variants = productVariantRepository.findByProductId(saved.getId());
+        resp.setVariants(productVariantMapper.toResponseList(variants));
+        resp.setTotalStock(saved.getTotalStock() != null ? saved.getTotalStock() : 0);
+        if (resp.getImages() != null && !resp.getImages().isEmpty()) resp.setThumbnail(resp.getImages().get(0));
+        double displayPrice = computeDisplayPrice(saved);
+        resp.setPrice(BigDecimal.valueOf(displayPrice));
+        if (resp.getRating() == null) resp.setRating(5);
+        if (resp.getSales() == null) resp.setSales(0L);
+
+        return resp;
     }
+
 
 
     @Transactional
