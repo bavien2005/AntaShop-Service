@@ -18,9 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 
@@ -52,17 +54,26 @@ public class ProductService {
             List<ProductVariant> variants = productVariantRepository.findByProductId(product.getId());
             response.setVariants(productVariantMapper.toResponseList(variants));
 
-            int totalStock = variants.stream()
-                    .mapToInt(v -> v.getStock() == null ? 0 : v.getStock())
-                    .sum();
+            int totalStock;
+            if (variants != null && !variants.isEmpty()) {
+                totalStock = variants.stream()
+                        .mapToInt(v -> v.getStock() == null ? 0 : v.getStock())
+                        .sum();
+            } else {
+                totalStock = product.getTotalStock() != null ? product.getTotalStock() : 0;
+            }
             response.setTotalStock(totalStock);
 
             if (response.getImages() != null && !response.getImages().isEmpty()) {
                 response.setThumbnail(response.getImages().get(0));
             }
 
-            response.setRating(5);
-            response.setSales(0L);
+            // set price display
+            double displayPrice = computeDisplayPrice(product);
+            response.setPrice(BigDecimal.valueOf(displayPrice));
+
+            if (response.getRating() == null) response.setRating(5);
+            if (response.getSales() == null) response.setSales(0L);
 
             return response;
         }).collect(Collectors.toList());
@@ -80,10 +91,14 @@ public class ProductService {
         List<ProductVariant> variants = productVariantRepository.findByProductId(product.getId());
         response.setVariants(productVariantMapper.toResponseList(variants));
 
-
-        int totalStock = variants.stream()
-                .mapToInt(v -> v.getStock() == null ? 0 : v.getStock())
-                .sum();
+        int totalStock;
+        if (variants != null && !variants.isEmpty()) {
+            totalStock = variants.stream()
+                    .mapToInt(v -> v.getStock() == null ? 0 : v.getStock())
+                    .sum();
+        } else {
+            totalStock = product.getTotalStock() != null ? product.getTotalStock() : 0;
+        }
         response.setTotalStock(totalStock);
 
 
@@ -91,8 +106,10 @@ public class ProductService {
             response.setThumbnail(response.getImages().get(0));
         }
 
-        response.setRating(5);
-        response.setSales(0L);
+        double displayPrice = computeDisplayPrice(product);
+        response.setPrice(BigDecimal.valueOf(displayPrice));
+        if (response.getRating() == null) response.setRating(5);
+        if (response.getSales() == null) response.setSales(0L);
 
         return response;
     }
@@ -193,11 +210,29 @@ public class ProductService {
         if (resp.getImages() != null && !resp.getImages().isEmpty()) {
             resp.setThumbnail(resp.getImages().get(0));
         }
-        // sales/rating defaults nếu cần
+        double displayPriceAfter = computeDisplayPrice(saved);
+        resp.setPrice(BigDecimal.valueOf(displayPriceAfter));
         if (resp.getRating() == null) resp.setRating(5);
         if (resp.getSales() == null) resp.setSales(0L);
 
         return resp;
+    }
+
+    private double computeDisplayPrice(Product product) {
+        // Nếu product.getPrice != null và > 0 -> dùng nó
+        try {
+            if (product.getPrice() != null && product.getPrice().doubleValue() > 0) {
+                return product.getPrice().doubleValue();
+            }
+        } catch (Exception ignored) {}
+
+        // Nếu có variants -> lấy min price
+        List<ProductVariant> variants = productVariantRepository.findByProductId(product.getId());
+        Optional<Double> min = variants.stream()
+                .map(v -> v.getPrice() == null ? 0.0 : v.getPrice().doubleValue())
+                .filter(p -> p != null && p > 0)
+                .min(Double::compareTo);
+        return min.orElse(0.0);
     }
 
 
@@ -216,6 +251,29 @@ public class ProductService {
     public ProductResponse deleteProduct(Long id){
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
+
+        // 1) cố gắng lấy files liên quan trên cloud
+        try {
+            String fetchUrl = cloudBaseUrl + "/product/" + id;
+            FileMetadataDto[] files = restTemplate.getForObject(fetchUrl, FileMetadataDto[].class);
+            if (files != null && files.length > 0) {
+                for (FileMetadataDto f : files) {
+                    try {
+                        // giả định cloud service expose DELETE /api/cloud/file/{id}
+                        String deleteUrl = cloudBaseUrl + "/file/" + f.getId();
+                        restTemplate.delete(deleteUrl);
+                    } catch (Exception e) {
+                        log.warn("Failed to delete file {} on cloud for product {} : {}", f.getId(), id, e.getMessage());
+                        // tiếp tục để cố xóa các file khác / xóa product
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to fetch files from cloud for product {} : {}", id, ex.getMessage());
+            // không ném, vẫn tiếp tục xóa product (tùy business logic bạn có thể ném)
+        }
+
+        // 2) xóa product (và cascade/variant nếu DB cấu hình)
         productRepository.delete(product);
         return productMapper.toResponse(product);
     }
@@ -229,4 +287,104 @@ public class ProductService {
         return productMapper.toResponseList(products);
     }
 
+
+    @Transactional
+    public ProductResponse syncImagesFromCloud(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+
+        try {
+            String fetchUrl = cloudBaseUrl + "/product/" + productId;
+            // 1) Try mapping to DTO[]
+            FileMetadataDto[] files = null;
+            try {
+                files = restTemplate.getForObject(fetchUrl, FileMetadataDto[].class);
+            } catch (Exception e) {
+                log.warn("Failed to map cloud response to FileMetadataDto[]: {}", e.getMessage());
+            }
+
+            // 2) If files null, try generic Map[] and extract url/public_id
+            List<String> urls;
+            if (files != null && files.length > 0) {
+                urls = Arrays.stream(files)
+                        .map(f -> {
+                            if (f.getUrl() != null) return f.getUrl();
+                            return null;
+                        })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+            } else {
+                // fallback: fetch as Map[]
+                try {
+                    Object[] raw = restTemplate.getForObject(fetchUrl, Object[].class);
+                    urls = Arrays.stream(raw != null ? raw : new Object[0])
+                            .map(o -> {
+                                try {
+                                    @SuppressWarnings("unchecked")
+                                    java.util.Map<String, Object> m = (java.util.Map<String, Object>) o;
+                                    // common Cloudinary field names
+                                    if (m.get("url") != null) return String.valueOf(m.get("url"));
+                                    if (m.get("secure_url") != null) return String.valueOf(m.get("secure_url"));
+                                    if (m.get("publicUrl") != null) return String.valueOf(m.get("publicUrl"));
+                                    if (m.get("path") != null) return String.valueOf(m.get("path"));
+                                } catch (Exception ex) {
+                                    // ignore
+                                }
+                                return null;
+                            })
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
+                } catch (Exception ex) {
+                    log.error("Failed to fetch raw files from cloud for product {} : {}", productId, ex.getMessage());
+                    urls = List.of();
+                }
+            }
+
+            if (urls == null || urls.isEmpty()) {
+                throw new RuntimeException("No files returned from cloud for product " + productId);
+            }
+
+            // update product entity images
+            product.setImages(urls);
+            // persist
+            Product saved = productRepository.save(product);
+
+            // build response similar to getProductById
+            ProductResponse resp = productMapper.toResponse(saved);
+
+            List<ProductVariant> variants = productVariantRepository.findByProductId(saved.getId());
+            resp.setVariants(productVariantMapper.toResponseList(variants));
+
+            int totalStock;
+            if (variants != null && !variants.isEmpty()) {
+                totalStock = variants.stream().mapToInt(v -> v.getStock() == null ? 0 : v.getStock()).sum();
+            } else {
+                totalStock = saved.getTotalStock() != null ? saved.getTotalStock() : 0;
+            }
+            resp.setTotalStock(totalStock);
+
+            // pick thumbnail: try isMain from DTO[] else first url
+            String thumbnail = null;
+            if (files != null && files.length > 0) {
+                thumbnail = Arrays.stream(files)
+                        .filter(f -> Boolean.TRUE.equals(f.getIsMain()))
+                        .map(FileMetadataDto::getUrl)
+                        .findFirst()
+                        .orElse(null);
+            }
+            if (thumbnail == null && !urls.isEmpty()) thumbnail = urls.get(0);
+            resp.setThumbnail(thumbnail);
+
+            double displayPrice = computeDisplayPrice(saved);
+            resp.setPrice(BigDecimal.valueOf(displayPrice));
+            if (resp.getRating() == null) resp.setRating(5);
+            if (resp.getSales() == null) resp.setSales(0L);
+
+            return resp;
+
+        } catch (Exception ex) {
+            log.error("Failed to sync images from cloud for product {} : {}", productId, ex.getMessage(), ex);
+            throw new RuntimeException("Failed to sync images from cloud: " + ex.getMessage(), ex);
+        }
+    }
 }

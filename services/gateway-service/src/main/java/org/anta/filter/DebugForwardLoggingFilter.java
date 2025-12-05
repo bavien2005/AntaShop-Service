@@ -9,10 +9,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 
-import java.net.URI;
-import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class DebugForwardLoggingFilter implements GlobalFilter, Ordered {

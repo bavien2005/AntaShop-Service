@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.Map;
 
 
 @RestController
@@ -52,4 +51,9 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProductByName(name));
     }
 
+    @PutMapping("/sync-images/{id}")
+    public ResponseEntity<ProductResponse> syncImages(@PathVariable Long id) {
+        ProductResponse resp = productService.syncImagesFromCloud(id);
+        return ResponseEntity.ok(resp);
+    }
 }

@@ -1,6 +1,8 @@
 package org.anta.filter;
 
 import org.anta.config.JwtUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -16,12 +18,15 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
     private final JwtUtil jwtUtil;
 
+    private static final Logger log = LoggerFactory.getLogger(AuthFilter.class);
+
     private final List<String> openPrefixes = List.of(
             "/api/auth",
             "/api/product",
-            "/api/public",
             "/api/products",
+            "/api/public",
             "/api/cloud",
+            "/api/address",
             "/actuator"
     );
 
@@ -31,7 +36,11 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getURI().getPath();
+
+            String path = exchange.getRequest().getURI().getPath();
+            String ct = exchange.getRequest().getHeaders().getFirst("Content-Type");
+
+            log.info("AuthFilter incoming path={} Content-Type={}", path, ct);
 
         // if any prefix matches (startsWith) -> skip auth
         for (String p : openPrefixes) {

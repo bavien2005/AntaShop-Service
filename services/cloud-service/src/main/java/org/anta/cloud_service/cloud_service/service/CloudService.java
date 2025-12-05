@@ -81,5 +81,12 @@ public class CloudService {
         }
         fileMetadataRepository.deleteTempFilesOlderThan(cutoff);
     }
-
+    public void deleteFileById(Long fileId) {
+        // tìm metadata từ repo
+        FileMetadata file = fileMetadataRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+        // xóa bằng provider SDK: cloudProvider.delete(file.getPublicId()) ... (tùy implement)
+        // sau đó xóa record DB
+        fileMetadataRepository.delete(file);
+    }
 }
