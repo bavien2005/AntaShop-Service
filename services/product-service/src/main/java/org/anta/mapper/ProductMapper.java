@@ -8,7 +8,6 @@ import org.mapstruct.*;
 
 import java.util.List;
 
-
 @Mapper(componentModel = "spring", uses = {ProductVariantMapper.class})
 public interface ProductMapper {
 
@@ -19,8 +18,12 @@ public interface ProductMapper {
     @Mapping(target = "id", ignore = true)
     Product toEntity(ProductRequest request);
 
+    // NOTE: không cho phép update trực tiếp 'images' bằng payload để tránh bị xóa nhầm
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "variants", ignore = true)
+    @Mappings({
+            @Mapping(target = "variants", ignore = true),
+            @Mapping(target = "images", ignore = true) // <- CHỐT chặn mất ảnh khi FE gửi images: []
+    })
     void updateFromRequest(ProductRequest request, @MappingTarget Product product);
 
     @AfterMapping
@@ -41,4 +44,3 @@ public interface ProductMapper {
         return p;
     }
 }
-

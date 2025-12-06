@@ -8,6 +8,8 @@ import org.anta.payment_service.repository.PaymentLogRepository;
 import org.anta.payment_service.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -18,6 +20,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentLogRepository logRepository;
     private final MomoService momoService;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @Transactional
     public CreateMomoResponse createPaymentAndRequestMomo(Long orderId,
@@ -90,7 +93,12 @@ public class PaymentService {
         // notify order-service (via rest call or message broker)
         // e.g., call OrderService to mark order as PAID
         // orderClient.updatePaymentStatus(p.getOrderId(), p.getStatus());
-
+        try {
+            String orderServiceUrl = "http://localhost:8084/api/orders/" + p.getOrderId() + "/payment-status/" + p.getStatus();
+            restTemplate.postForEntity(orderServiceUrl, null, Void.class);
+        } catch (Exception e) {
+            // log warning, và có thể retry qua queue nếu muốn
+        }
         return true;
     }
 
