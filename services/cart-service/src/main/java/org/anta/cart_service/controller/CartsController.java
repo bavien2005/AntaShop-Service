@@ -36,19 +36,22 @@ public class CartsController {
      * Hoặc:  /api/cart/current?sessionId=abc123
      */
     @GetMapping("/current")
-    public ResponseEntity<CartsResponse> getCurrentCart(
+    public ResponseEntity<?> getCurrentCart(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String sessionId
     ) {
         Optional<Carts> optionalCart = cartsService.getCurrentCart(userId, sessionId);
 
         if (optionalCart.isEmpty()) {
-            return ResponseEntity.noContent().build(); // 204 nếu chưa có cart
+            // 204 nếu chưa có giỏ hàng
+            return ResponseEntity.noContent().build();
         }
 
+        // Convert sang response DTO
         CartsResponse response = cartsMapper.toResponse(optionalCart.get());
         return ResponseEntity.ok(response);
     }
+
 
     /**
      * [DELETE] Xoá 1 sản phẩm khỏi giỏ hàng
@@ -72,7 +75,7 @@ public class CartsController {
     public ResponseEntity<?> updateItemQuantity(
             @PathVariable Long cartId,
             @RequestParam Long productId,
-            @RequestParam Long variantId,
+            @RequestParam(required = false) Long variantId,
             @RequestParam Long newQuantity) {
 
         try {

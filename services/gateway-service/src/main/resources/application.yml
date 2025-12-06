@@ -7,17 +7,17 @@ spring:
 
   cloud:
     gateway:
-
       globalcors:
+        add-to-simple-url-handler-mapping: true
         corsConfigurations:
-          '[/**]':
-            # explicit origins (FE origins you use)
-            allowedOrigins:
-              - "http://localhost:5173"
-              - "http://127.0.0.1:5173"
-              - "http://localhost:3000"
-              - "http://127.0.0.1:3000"
-            # pattern fallback (optional, helpful during dev)
+          "[/**]":
+#            allowedOrigins:
+#              - "http://localhost:5173"
+#              - "http://127.0.0.1:5173"
+#              - "http://localhost:3000"
+#              - "http://127.0.0.1:3000"
+#              - "http://localhost:5184"
+#              - "http://127.0.0.1:5184"
             allowedOriginPatterns:
               - "http://localhost:*"
               - "http://127.0.0.1:*"
@@ -33,7 +33,6 @@ spring:
             allowCredentials: true
             maxAge: 3600
 
-      # ---- Routes ----
       routes:
         - id: identity-auth
           uri: http://localhost:8082
@@ -49,10 +48,12 @@ spring:
           uri: http://localhost:8082
           predicates:
             - Path=/api/address/**
+
         - id: identity-verify
           uri: http://localhost:8082
           predicates:
             - Path=/api/auth/verify/**
+
         - id: notification-auth
           uri: http://localhost:8083
           predicates:
@@ -68,26 +69,26 @@ spring:
           predicates:
             - Path=/api/product/**
 
-        - id: product-auth
+        - id: product-variant
           uri: http://localhost:8086
           predicates:
             - Path=/api/productVariant/**
 
-        - id: product-auth
+        - id: product-reservations
           uri: http://localhost:8086
           predicates:
             - Path=/api/reservations/**
 
+        - id: cart-service
+          uri: http://localhost:8088
+          predicates:
+            - Path=/api/cart/**
 
-
-# logging as you had
 logging:
   level:
     org.springframework.cloud.gateway: INFO
-    # optionally make your filters more verbose
     org.anta.filter: INFO
 
-# Enable actuator endpoints so you can inspect routes
 management:
   endpoints:
     web:
