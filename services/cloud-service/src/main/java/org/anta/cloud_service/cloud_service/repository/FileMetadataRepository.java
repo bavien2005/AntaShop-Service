@@ -24,6 +24,13 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata , Lon
     @Query("DELETE FROM FileMetadata f WHERE f.productId IS NULL AND f.uploadedAt < :cutoff")
     void deleteTempFilesOlderThan(@Param("cutoff") LocalDateTime cutoff);
 
+    @Modifying
+    @Query("UPDATE FileMetadata f SET f.isMain = false WHERE f.productId = :productId")
+    void resetIsMainForProduct(@Param("productId") Long productId);
+
+    @Modifying
+    @Query("UPDATE FileMetadata f SET f.productId = null, f.isMain = false WHERE f.productId = :productId")
+    void clearProductForProductId(@Param("productId") Long productId);
     List<FileMetadata> findByProductIdIsNullAndUploadedAtBefore(LocalDateTime cutoff);
 }
 

@@ -7,6 +7,7 @@ import org.anta.cloud_service.cloud_service.entity.FileMetadata;
 import org.anta.cloud_service.cloud_service.service.CloudService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/cloud")
@@ -61,8 +63,61 @@ public class CloudController {
     @PutMapping("/update-product/{productId}")
     public ResponseEntity<Map<String, String>> updateProductImages(
             @PathVariable Long productId,
-            @RequestBody List<Long> imageIds) {
-        cloudService.assignImagesToProduct(productId, imageIds);
+            @RequestBody(required = false) Object body) {
+
+        // body có thể là List<Long> (legacy) hoặc Map { ids: [...], mainId: ... }
+        List<Long> imageIds = null;
+        Long mainId = null;
+
+        if (body == null) {
+            // clear existing files for product
+            cloudService.assignImagesToProduct(productId, List.of(), null);
+            return ResponseEntity.ok(Map.of("message", "Images unassigned"));
+        }
+
+        if (body instanceof List) {
+            // legacy: List of ids
+            @SuppressWarnings("unchecked")
+            List<Object> raw = (List<Object>) body;
+            imageIds = raw.stream().map(o -> Long.valueOf(String.valueOf(o))).collect(Collectors.toList());
+        } else if (body instanceof java.util.Map) {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> map = (java.util.Map<String, Object>) body;
+            Object idsObj = map.get("ids");
+            if (idsObj instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> raw = (List<Object>) idsObj;
+                imageIds = raw.stream().map(o -> Long.valueOf(String.valueOf(o))).collect(Collectors.toList());
+            } else if (idsObj == null && map.get("imageIds") instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> raw = (List<Object>) map.get("imageIds");
+                imageIds = raw.stream().map(o -> Long.valueOf(String.valueOf(o))).collect(Collectors.toList());
+            }
+            // mainId may be present
+            if (map.get("mainId") != null) {
+                mainId = Long.valueOf(String.valueOf(map.get("mainId")));
+            } else if (map.get("main") != null) {
+                mainId = Long.valueOf(String.valueOf(map.get("main")));
+            }
+        } else {
+            // attempt to coerce via Jackson -> Map
+            try {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> map = (java.util.Map<String, Object>) body;
+                Object idsObj = map.get("ids");
+                if (idsObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> raw = (List<Object>) idsObj;
+                    imageIds = raw.stream().map(o -> Long.valueOf(String.valueOf(o))).collect(Collectors.toList());
+                }
+                if (map.get("mainId") != null) mainId = Long.valueOf(String.valueOf(map.get("mainId")));
+            } catch (Exception ex) {
+                log.warn("Cannot parse body for update-product: {}", ex.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Invalid payload"));
+            }
+        }
+
+        cloudService.assignImagesToProduct(productId, imageIds == null ? List.of() : imageIds, mainId);
         return ResponseEntity.ok(Map.of("message", "Images linked successfully"));
     }
 

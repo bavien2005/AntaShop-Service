@@ -106,8 +106,13 @@ public class ProductService {
 
         double displayPrice = computeDisplayPrice(product);
         response.setPrice(BigDecimal.valueOf(displayPrice));
-        if (response.getRating() == null) response.setRating(5);
-        if (response.getSales() == null) response.setSales(0L);
+
+        if (response.getRating() == null){
+            response.setRating(5);
+        }
+        if (response.getSales() == null) {
+            response.setSales(0L);
+        }
 
         return response;
     }
@@ -149,7 +154,10 @@ public class ProductService {
                 // 1) Gọi cloud-service để cập nhật productId cho các image
                 String assignUrl = cloudBaseUrl + "/update-product/" + saved.getId();
                 // restTemplate.put sẽ gửi body dưới dạng JSON (List<Long>)
-                restTemplate.put(assignUrl, imageIds);
+                Map<String,Object> payload = new HashMap<>();
+                payload.put("ids", imageIds);
+                payload.put("mainId", null); // nếu bạn chưa biết mainId từ client; safe to pass null
+                restTemplate.put(assignUrl, payload);
                 assignedToCloud = true;
 
                 // 2) Lấy metadata của product từ cloud để lấy URL thực tế

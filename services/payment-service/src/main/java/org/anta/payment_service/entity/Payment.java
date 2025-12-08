@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 @Builder
 public class Payment {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name="order_id", nullable = false)

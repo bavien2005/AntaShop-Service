@@ -1,16 +1,14 @@
 package org.anta.cloud_service.cloud_service.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import javax.naming.Name;
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@Setter
 @Table(name = "file_metadata")
 @NoArgsConstructor
 @AllArgsConstructor
