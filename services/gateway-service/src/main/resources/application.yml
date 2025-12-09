@@ -84,6 +84,16 @@ spring:
           predicates:
             - Path=/api/cart/**
 
+        - id: category-service
+          uri: http://localhost:8087
+          predicates:
+            - Path=/api/categories/**
+
+        - id: revenue-service
+          uri: http://localhost:8089
+          predicates:
+            - Path=/api/dashboard/**
+
 logging:
   level:
     org.springframework.cloud.gateway: INFO

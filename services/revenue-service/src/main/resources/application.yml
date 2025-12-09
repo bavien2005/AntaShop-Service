@@ -1,0 +1,17 @@
+server:
+  port: 8089   # revenue-service chạy ở port 8089
+
+spring:
+  application:
+    name: revenue-service
+
+services:
+  cart:
+    url: http://localhost:8088   # Cart Service chạy ở port 8088
+  order:
+    url: http://localhost:8084   # Order Service chạy ở port 8084
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web.reactive.function.client.WebClient: DEBUG

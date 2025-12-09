@@ -9,8 +9,6 @@ import org.anta.cart_service.service.CartsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -22,7 +20,7 @@ public class CartsController {
     private final CartsMapper cartsMapper;
 
     /**
-        Thêm sản phẩm vào giỏ hàng
+     * [POST] Thêm sản phẩm vào giỏ hàng
      */
     @PostMapping("/add")
     public ResponseEntity<CartsResponse> addItemToCart(@RequestBody CartItemsRequest request) {
@@ -31,7 +29,7 @@ public class CartsController {
     }
 
     /**
-     *  [GET] Lấy giỏ hàng hiện tại theo userId hoặc sessionId
+     * [GET] Lấy giỏ hàng hiện tại theo userId hoặc sessionId
      * Ví dụ: /api/cart/current?userId=1
      * Hoặc:  /api/cart/current?sessionId=abc123
      */
@@ -52,7 +50,6 @@ public class CartsController {
         return ResponseEntity.ok(response);
     }
 
-
     /**
      * [DELETE] Xoá 1 sản phẩm khỏi giỏ hàng
      */
@@ -71,6 +68,9 @@ public class CartsController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * [PUT] Cập nhật số lượng sản phẩm trong giỏ hàng
+     */
     @PutMapping("/{cartId}/items/quantity")
     public ResponseEntity<?> updateItemQuantity(
             @PathVariable Long cartId,
@@ -78,28 +78,18 @@ public class CartsController {
             @RequestParam(required = false) Long variantId,
             @RequestParam Long newQuantity) {
 
-        try {
-            Carts updatedCart = cartsService.updateItemQuantity(cartId, productId, variantId, newQuantity);
+        Carts updatedCart = cartsService.updateItemQuantity(cartId, productId, variantId, newQuantity);
 
-            if (updatedCart != null) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", true);
-                response.put("message", "Cập nhật số lượng thành công");
-                response.put("cart", updatedCart);
-                return ResponseEntity.ok(response);
-            } else {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", false);
-                response.put("message", "Không tìm thấy sản phẩm trong giỏ hàng");
-                return ResponseEntity.badRequest().body(response);
-            }
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "Lỗi khi cập nhật số lượng: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(response);
+        if (updatedCart != null) {
+            return ResponseEntity.ok(cartsMapper.toResponse(updatedCart));
+        } else {
+            return ResponseEntity.badRequest().body("Không tìm thấy sản phẩm trong giỏ hàng");
         }
     }
+
+    /**
+     * [POST] Merge giỏ hàng guest → user khi login
+     */
     @PostMapping("/merge")
     public ResponseEntity<?> mergeCart(
             @RequestParam String sessionId,
@@ -111,6 +101,7 @@ public class CartsController {
         }
         return ResponseEntity.ok(msg("Merge thành công", cartsMapper.toResponse(merged)));
     }
+
     // ============================================================
     // Helper chuẩn JSON response
     // ============================================================
@@ -129,4 +120,3 @@ public class CartsController {
         };
     }
 }
-

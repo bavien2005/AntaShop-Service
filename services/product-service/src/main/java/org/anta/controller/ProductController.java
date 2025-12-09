@@ -3,6 +3,7 @@ package org.anta.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.anta.dto.request.ProductRequest;
 import org.anta.dto.response.ProductResponse;
+import org.anta.entity.Product;
 import org.anta.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -55,5 +56,26 @@ public class ProductController {
     public ResponseEntity<ProductResponse> syncImages(@PathVariable Long id) {
         ProductResponse resp = productService.syncImagesFromCloud(id);
         return ResponseEntity.ok(resp);
+    }
+
+    /**
+     * Gán sản phẩm vào danh mục
+     */
+    @PutMapping("/{productId}/category/{categoryId}")
+    public ResponseEntity<Product> assignCategory(
+            @PathVariable Long productId,
+            @PathVariable Long categoryId) {
+
+        Product updated = productService.assignCategory(productId, categoryId);
+        return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * Xóa sản phẩm khỏi danh mục
+     */
+    @DeleteMapping("/{productId}/category")
+    public ResponseEntity<Product> removeCategory(@PathVariable Long productId) {
+        Product updated = productService.removeCategory(productId);
+        return ResponseEntity.ok(updated);
     }
 }

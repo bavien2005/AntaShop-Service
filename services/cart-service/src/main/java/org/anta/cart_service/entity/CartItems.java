@@ -24,6 +24,8 @@ public class CartItems {
     private Long variantId;
     @Column(name = "product_name")
     private String productName;
+    @Column(name = "image_url")
+    private String imageUrl;
     @Column(name = "unit_price")
     private Double unitPrice;
     @Column(name = "quantity")

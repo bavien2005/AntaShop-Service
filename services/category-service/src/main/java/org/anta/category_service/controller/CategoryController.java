@@ -14,26 +14,36 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/categories")
 public class CategoryController {
+
     private final CategoryService categoryService;
     private final CategoryMapper categoryMapper;
 
     @GetMapping
-    public ResponseEntity<List<CategoryResponse>> getAllCategory(){
-        var list=categoryService.getAll().stream().map(categoryMapper::toResponse).toList();
+    public ResponseEntity<List<CategoryResponse>> getAllCategory() {
+        var list = categoryService.getAll().stream()
+                .map(categoryMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(list);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<CategoryResponse> update(
+            @PathVariable Long id,
+            @RequestBody CategoryRequest rq) {
+
+        var updated = categoryService.update(id, rq);
+        return ResponseEntity.ok(categoryMapper.toResponse(updated));
+    }
+
     @PostMapping
-    public ResponseEntity<CategoryResponse> create(@RequestBody CategoryRequest rq){
-        var ctr=categoryService.create(rq);
+    public ResponseEntity<CategoryResponse> create(@RequestBody CategoryRequest rq) {
+        var ctr = categoryService.create(rq);
         return ResponseEntity.ok(categoryMapper.toResponse(ctr));
     }
 
-
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id){
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         categoryService.delete(id);
         return ResponseEntity.noContent().build();
     }
-
 }

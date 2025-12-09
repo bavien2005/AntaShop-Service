@@ -30,7 +30,8 @@ public class Product {
     @Column(precision = 12, scale = 2)
     private BigDecimal price;
 
-    private String category;
+//    private String category;
+    private Long categoryId;
 
     @Column(name = "total_stock")
     private Integer totalStock;

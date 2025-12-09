@@ -17,7 +17,7 @@ public class ProductRequest {
 
     private BigDecimal price;
 
-    private String category;
+    private Long categoryId;
 
     private List<String> categories;
 

@@ -4,7 +4,9 @@ import org.anta.config.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -27,6 +29,8 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/public",
             "/api/cloud",
             "/api/address",
+            "/api/cart",
+            "/api/categories",
             "/actuator"
     );
 
@@ -37,7 +41,14 @@ public class AuthFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
 
-            String path = exchange.getRequest().getURI().getPath();
+        ServerHttpRequest request = exchange.getRequest();
+
+        if (request.getMethod() == HttpMethod.OPTIONS) {
+            exchange.getResponse().setStatusCode(HttpStatus.OK);
+            return exchange.getResponse().setComplete();
+        }
+
+        String path = exchange.getRequest().getURI().getPath();
             String ct = exchange.getRequest().getHeaders().getFirst("Content-Type");
 
             log.info("AuthFilter incoming path={} Content-Type={}", path, ct);

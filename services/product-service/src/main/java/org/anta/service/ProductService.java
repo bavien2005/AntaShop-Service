@@ -2,6 +2,7 @@ package org.anta.service;
 
 
 import lombok.extern.slf4j.Slf4j;
+import org.anta.client.CategoryClient;
 import org.anta.dto.request.ProductRequest;
 import org.anta.dto.request.ProductVariantRequest;
 import org.anta.dto.response.FileMetadataDto;
@@ -38,6 +39,8 @@ public class ProductService {
     private final ProductVariantMapper productVariantMapper;
 
     private final RestTemplate restTemplate;
+
+    private final CategoryClient categoryClient;
 
     @Value("${cloud.service.base-url}")
     private String cloudBaseUrl;
@@ -106,30 +109,141 @@ public class ProductService {
 
         double displayPrice = computeDisplayPrice(product);
         response.setPrice(BigDecimal.valueOf(displayPrice));
-
-        if (response.getRating() == null){
-            response.setRating(5);
-        }
-        if (response.getSales() == null) {
-            response.setSales(0L);
-        }
+        if (response.getRating() == null) response.setRating(5);
+        if (response.getSales() == null) response.setSales(0L);
 
         return response;
     }
 
 
 
+//    @Transactional
+//    public ProductResponse addProduct(ProductRequest productRequest){
+//
+//        // map request -> entity (đảm bảo variants có parent nhờ mapper)
+//        Product entity = productMapper.toEntityWithParents(productRequest);
+//
+//        if (entity.getImages() == null) {
+//            entity.setImages(List.of());
+//        }
+//
+//        // set totalStock nếu có variants hoặc request cung cấp
+//        if (entity.getVariants() != null && !entity.getVariants().isEmpty()) {
+//            int total = entity.getVariants().stream()
+//                    .mapToInt(v -> v.getStock() == null ? 0 : v.getStock())
+//                    .sum();
+//            entity.setTotalStock(total);
+//        } else {
+//            if (productRequest.getTotalStock() != null) {
+//                entity.setTotalStock(productRequest.getTotalStock());
+//            } else {
+//                entity.setTotalStock(0);
+//            }
+//        }
+//
+//        // Lưu product trước để có productId (transaction đang mở)
+//        Product saved = productRepository.save(entity);
+//
+//        // Nếu client đưa imageIds => call cloud-service để gắn
+//        List<Long> imageIds = productRequest.getImageIds();
+//        if (imageIds != null && !imageIds.isEmpty()) {
+//            boolean assignedToCloud = false;
+//            try {
+//                // 1) Gọi cloud-service để cập nhật productId cho các image
+//                String assignUrl = cloudBaseUrl + "/update-product/" + saved.getId();
+//                // restTemplate.put sẽ gửi body dưới dạng JSON (List<Long>)
+//                restTemplate.put(assignUrl, imageIds);
+//                assignedToCloud = true;
+//
+//                // 2) Lấy metadata của product từ cloud để lấy URL thực tế
+//                String fetchUrl = cloudBaseUrl + "/product/" + saved.getId();
+//                // dùng FileMetadataDto[] để parse response
+//                FileMetadataDto[] files = restTemplate.getForObject(fetchUrl,FileMetadataDto[].class);
+//
+//                if (files != null && files.length > 0) {
+//                    List<String> urls = Arrays.stream(files)
+//                            .map(FileMetadataDto::getUrl)
+//                            .filter(Objects::nonNull)
+//                            .collect(Collectors.toList());
+//
+//                    // cập nhật entity đang managed trong transaction
+//                    saved.setImages(urls);
+//
+//                    // nếu muốn gắn thumbnail tự động: lấy isMain true, nếu không có thì first
+//                    String thumbnail = Arrays.stream(files)
+//                            .filter(f -> Boolean.TRUE.equals(f.getIsMain()))
+//                            .map(FileMetadataDto::getUrl)
+//                            .findFirst()
+//                            .orElse(urls.size() > 0 ? urls.get(0) : null);
+//
+//                    // lưu lại để persist images vào DB (entity đang managed nhưng ta gọi save để rõ ràng)
+//                    productRepository.save(saved);
+//                } else {
+//                    // nếu cloud trả về rỗng => coi là lỗi (vì client đã upload nhưng cloud không gắn thành công)
+//                    throw new RuntimeException("No files returned from cloud for product " + saved.getId());
+//                }
+//
+//            } catch (Exception ex) {
+//                log.error("Failed to assign images on cloud for productId {} : {}",
+//                        saved.getId(), ex.getMessage(), ex);
+//
+//                // Bù trừ: nếu đã assign trên cloud nhưng sau đó fetch/ghi DB lỗi,
+//                // cố gắng unassign (cleanup) để không leave orphan state trên cloud.
+//                if (assignedToCloud) {
+//                    try {
+//                        String unassignUrl = cloudBaseUrl + "/update-product/" + saved.getId();
+//                        // send empty list to clear product_id for those images
+//                        restTemplate.put(unassignUrl, List.of());
+//                    } catch (Exception inner) {
+//                        log.warn("Failed to rollback cloud assignments for product {} : {}",
+//                                saved.getId(), inner.getMessage(), inner);
+//                        // tiếp tục ném lỗi ban đầu; DB transaction sẽ rollback nhưng cloud có thể còn giữ productId
+//                    }
+//                }
+//
+//                // ném exception để transaction rollback (product không được tạo)
+//                throw new RuntimeException("Failed to associate uploaded images. Product was not created.", ex);
+//            }
+//        }
+//
+//        // Build response bằng mapper
+//        ProductResponse resp = productMapper.toResponse(saved);
+//        if (resp.getImages() != null && !resp.getImages().isEmpty()) {
+//            resp.setThumbnail(resp.getImages().get(0));
+//        }
+//        double displayPriceAfter = computeDisplayPrice(saved);
+//        resp.setPrice(BigDecimal.valueOf(displayPriceAfter));
+//        if (resp.getRating() == null) resp.setRating(5);
+//        if (resp.getSales() == null) resp.setSales(0L);
+//
+//        return resp;
+//    }\
     @Transactional
     public ProductResponse addProduct(ProductRequest productRequest){
 
-        // map request -> entity (đảm bảo variants có parent nhờ mapper)
+        // =============================
+        // 1) Kiểm tra Category nếu có
+        // =============================
+        if (productRequest.getCategoryId() != null) {
+            boolean exists = categoryClient.existsCategory(productRequest.getCategoryId());
+            if (!exists) {
+                throw new RuntimeException("Category not found with ID: " + productRequest.getCategoryId());
+            }
+        }
+
+        // =====================================
+        // 2) Map request -> entity (có variants)
+        // =====================================
         Product entity = productMapper.toEntityWithParents(productRequest);
+
+        // Gán categoryId vào entity
+        entity.setCategoryId(productRequest.getCategoryId());
 
         if (entity.getImages() == null) {
             entity.setImages(List.of());
         }
 
-        // set totalStock nếu có variants hoặc request cung cấp
+        // tính totalStock
         if (entity.getVariants() != null && !entity.getVariants().isEmpty()) {
             int total = entity.getVariants().stream()
                     .mapToInt(v -> v.getStock() == null ? 0 : v.getStock())
@@ -143,27 +257,26 @@ public class ProductService {
             }
         }
 
-        // Lưu product trước để có productId (transaction đang mở)
+        // =====================================
+        // 3) Lưu product trước để có ID
+        // =====================================
         Product saved = productRepository.save(entity);
 
-        // Nếu client đưa imageIds => call cloud-service để gắn
+        // =====================================
+        // 4) Gắn imageIds với cloud-service
+        // =====================================
         List<Long> imageIds = productRequest.getImageIds();
         if (imageIds != null && !imageIds.isEmpty()) {
             boolean assignedToCloud = false;
             try {
-                // 1) Gọi cloud-service để cập nhật productId cho các image
+                // 1) update productId vào ảnh
                 String assignUrl = cloudBaseUrl + "/update-product/" + saved.getId();
-                // restTemplate.put sẽ gửi body dưới dạng JSON (List<Long>)
-                Map<String,Object> payload = new HashMap<>();
-                payload.put("ids", imageIds);
-                payload.put("mainId", null); // nếu bạn chưa biết mainId từ client; safe to pass null
-                restTemplate.put(assignUrl, payload);
+                restTemplate.put(assignUrl, imageIds);
                 assignedToCloud = true;
 
-                // 2) Lấy metadata của product từ cloud để lấy URL thực tế
+                // 2) Fetch metadata từ cloud
                 String fetchUrl = cloudBaseUrl + "/product/" + saved.getId();
-                // dùng FileMetadataDto[] để parse response
-                FileMetadataDto[] files = restTemplate.getForObject(fetchUrl,FileMetadataDto[].class);
+                FileMetadataDto[] files = restTemplate.getForObject(fetchUrl, FileMetadataDto[].class);
 
                 if (files != null && files.length > 0) {
                     List<String> urls = Arrays.stream(files)
@@ -171,58 +284,54 @@ public class ProductService {
                             .filter(Objects::nonNull)
                             .collect(Collectors.toList());
 
-                    // cập nhật entity đang managed trong transaction
                     saved.setImages(urls);
 
-                    // nếu muốn gắn thumbnail tự động: lấy isMain true, nếu không có thì first
+                    // thumbnail
                     String thumbnail = Arrays.stream(files)
                             .filter(f -> Boolean.TRUE.equals(f.getIsMain()))
                             .map(FileMetadataDto::getUrl)
                             .findFirst()
                             .orElse(urls.size() > 0 ? urls.get(0) : null);
 
-                    // lưu lại để persist images vào DB (entity đang managed nhưng ta gọi save để rõ ràng)
                     productRepository.save(saved);
+
                 } else {
-                    // nếu cloud trả về rỗng => coi là lỗi (vì client đã upload nhưng cloud không gắn thành công)
                     throw new RuntimeException("No files returned from cloud for product " + saved.getId());
                 }
 
             } catch (Exception ex) {
-                log.error("Failed to assign images on cloud for productId {} : {}",
-                        saved.getId(), ex.getMessage(), ex);
+                log.error("FAILED TO ASSIGN IMAGES for productId {} : {}", saved.getId(), ex.getMessage(), ex);
 
-                // Bù trừ: nếu đã assign trên cloud nhưng sau đó fetch/ghi DB lỗi,
-                // cố gắng unassign (cleanup) để không leave orphan state trên cloud.
                 if (assignedToCloud) {
                     try {
                         String unassignUrl = cloudBaseUrl + "/update-product/" + saved.getId();
-                        // send empty list to clear product_id for those images
                         restTemplate.put(unassignUrl, List.of());
                     } catch (Exception inner) {
-                        log.warn("Failed to rollback cloud assignments for product {} : {}",
-                                saved.getId(), inner.getMessage(), inner);
-                        // tiếp tục ném lỗi ban đầu; DB transaction sẽ rollback nhưng cloud có thể còn giữ productId
+                        log.warn("ROLLBACK FAILED for product {} : {}", saved.getId(), inner.getMessage());
                     }
                 }
 
-                // ném exception để transaction rollback (product không được tạo)
-                throw new RuntimeException("Failed to associate uploaded images. Product was not created.", ex);
+                throw new RuntimeException("Failed to associate images. Product was not created.", ex);
             }
         }
 
-        // Build response bằng mapper
+        // =====================================
+        // 5) Build response
+        // =====================================
         ProductResponse resp = productMapper.toResponse(saved);
         if (resp.getImages() != null && !resp.getImages().isEmpty()) {
             resp.setThumbnail(resp.getImages().get(0));
         }
+
         double displayPriceAfter = computeDisplayPrice(saved);
         resp.setPrice(BigDecimal.valueOf(displayPriceAfter));
+
         if (resp.getRating() == null) resp.setRating(5);
         if (resp.getSales() == null) resp.setSales(0L);
 
         return resp;
     }
+
 
     private double computeDisplayPrice(Product product) {
         // Nếu product.getPrice != null và > 0 -> dùng nó
@@ -505,5 +614,39 @@ public class ProductService {
             log.error("Failed to sync images from cloud for product {} : {}", productId, ex.getMessage(), ex);
             throw new RuntimeException("Failed to sync images from cloud: " + ex.getMessage(), ex);
         }
+    }
+
+    //them san pham vào danh mục
+    /**
+     * Gán sản phẩm vào danh mục
+     */
+    public Product assignCategory(Long productId, Long categoryId) {
+
+        // 1) Kiểm tra Category tồn tại trong Category-Service
+        if (!categoryClient.existsCategory(categoryId)) {
+            throw new RuntimeException("Category not found: " + categoryId);
+        }
+
+        // 2) Lấy product
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
+
+        // 3) Gán category
+        product.setCategoryId(categoryId);
+
+        // 4) Lưu DB
+        return productRepository.save(product);
+    }
+
+    /**
+     * Xóa sản phẩm khỏi danh mục
+     */
+    public Product removeCategory(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
+
+        product.setCategoryId(null);
+
+        return productRepository.save(product);
     }
 }

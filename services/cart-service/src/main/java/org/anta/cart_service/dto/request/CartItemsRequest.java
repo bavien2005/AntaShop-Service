@@ -9,7 +9,8 @@ public class CartItemsRequest {
     private String sessionId; // khach hang ch dang nhap
     private Long productId;
     private Long variantId;
-    private String productName;
-    private Double unitPrice;
+//    private String productName;
+//    private String imageUrl;
+//    private Double unitPrice;
     private Long quantity;
 }

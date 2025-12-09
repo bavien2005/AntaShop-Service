@@ -19,7 +19,7 @@ public class ProductResponse {
 
     private BigDecimal price;
 
-    private String category;
+    private Long categoryId;
 
     private List<String> images;
 

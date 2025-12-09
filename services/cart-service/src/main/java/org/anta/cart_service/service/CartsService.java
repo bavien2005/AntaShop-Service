@@ -2,6 +2,10 @@ package org.anta.cart_service.service;
 
 
 import lombok.RequiredArgsConstructor;
+import org.anta.cart_service.client.CloudClient;
+import org.anta.cart_service.client.FileMetadataDTO;
+import org.anta.cart_service.client.ProductClient;
+import org.anta.cart_service.client.ProductDTO;
 import org.anta.cart_service.dto.request.CartItemsRequest;
 import org.anta.cart_service.entity.CartItems;
 import org.anta.cart_service.entity.Carts;
@@ -20,6 +24,8 @@ import java.util.Optional;
 public class CartsService {
     private final CartsRepository cartsRepository;
     private final CartItemsRepository cartItemsRepository;
+    private final ProductClient productClient;
+    private final CloudClient cloudClient;
 
     private Carts createNewCart(CartItemsRequest req) {
         Carts newCart = new Carts();
@@ -32,10 +38,11 @@ public class CartsService {
         return cartsRepository.save(newCart);
     }
     //them sp vao gio
+    // thêm sp vào giỏ
     @Transactional
-    public Carts AddItemsToCarts(CartItemsRequest req){
+    public Carts AddItemsToCarts(CartItemsRequest req) {
         Optional<Carts> optionalCarts;
-        if ((req.getUserId()) != null) {
+        if (req.getUserId() != null) {
             optionalCarts = cartsRepository.findByUserIdAndStatus(req.getUserId(), Status.OPEN);
         } else {
             optionalCarts = cartsRepository.findBySessionIdAndStatus(req.getSessionId(), Status.OPEN);
@@ -43,33 +50,42 @@ public class CartsService {
 
         Carts cart = optionalCarts.orElseGet(() -> createNewCart(req));
 
-        Optional<CartItems> cartItems=cartItemsRepository.findByCartIdAndProductIdAndVariantId(
+        Optional<CartItems> cartItems = cartItemsRepository.findByCartIdAndProductIdAndVariantId(
                 cart.getId(), req.getProductId(), req.getVariantId()
         );
 
         CartItems items;
 
-        if(cartItems.isPresent()){
+        if (cartItems.isPresent()) {
+            // Nếu sản phẩm đã tồn tại thì cộng thêm số lượng
             items = cartItems.get();
             items.setQuantity(
                     (items.getQuantity() == null ? 0 : items.getQuantity()) + req.getQuantity()
             );
-            items.setUpdatedAt(LocalDateTime.now()); // FIX: Thêm updatedAt
+            items.setUpdatedAt(LocalDateTime.now());
         } else {
+            // Nếu chưa có thì tạo mới
+            // Gọi sang product-service để lấy thông tin sản phẩm
+            ProductDTO product = productClient.getProductById(req.getProductId());
+
+            // Gọi sang cloud-service để lấy ảnh chính của sản phẩm
+            FileMetadataDTO file = cloudClient.getMainImage(req.getProductId());
+
             items = new CartItems();
             items.setCart(cart);
             items.setProductId(req.getProductId());
             items.setVariantId(req.getVariantId());
-            items.setProductName(req.getProductName());
+            items.setProductName(product.getName());                 // lấy từ product-service
+            items.setUnitPrice(product.getPrice().doubleValue());    // lấy từ product-service
+            items.setImageUrl(file != null ? file.getUrl() : null);  // lấy từ cloud-service
             items.setQuantity(req.getQuantity());
-            items.setUnitPrice(req.getUnitPrice());
             items.setCreatedAt(LocalDateTime.now());
             items.setUpdatedAt(LocalDateTime.now());
         }
 
         cartItemsRepository.save(items);
 
-        // FIX: Cập nhật updatedAt cho cart
+        // Cập nhật thời gian giỏ hàng
         cart.setUpdatedAt(LocalDateTime.now());
         cartsRepository.save(cart);
 
@@ -132,22 +148,36 @@ public class CartsService {
     // MERGE GIỎ HÀNG (GUEST → USER) KHI LOGIN
     // ============================================================
     public Carts mergeCart(String sessionId, Long userId) {
-        Optional<Carts> guestOpt = cartsRepository.findBySessionIdAndStatus(sessionId, Status.OPEN);
-        Optional<Carts> userOpt = cartsRepository.findByUserIdAndStatus(userId, Status.OPEN);
+        // Giỏ guest theo sessionId
+        Optional<Carts> guestOpt = cartsRepository
+                .findBySessionIdAndStatus(sessionId, Status.OPEN);
 
+        // Giỏ user theo userId
+        Optional<Carts> userOpt = cartsRepository
+                .findByUserIdAndStatus(userId, Status.OPEN);
+
+        // 1) Không có giỏ guest -> trả về giỏ user (nếu có), đảm bảo sessionId = null
         if (guestOpt.isEmpty()) {
-            return userOpt.orElse(null);
+            if (userOpt.isPresent()) {
+                Carts userCart = userOpt.get();
+                userCart.setSessionId(null);              // QUAN TRỌNG
+                userCart.setUpdatedAt(LocalDateTime.now());
+                return cartsRepository.save(userCart);
+            }
+            return null;
         }
 
         Carts guestCart = guestOpt.get();
 
+        // 2) User chưa có giỏ -> dùng luôn giỏ guest, đổi sang userId + bỏ sessionId
         if (userOpt.isEmpty()) {
             guestCart.setUserId(userId);
-            guestCart.setSessionId(null);
+            guestCart.setSessionId(null);                 // bỏ sessionId
             guestCart.setUpdatedAt(LocalDateTime.now());
             return cartsRepository.save(guestCart);
         }
 
+        // 3) Cả guestCart & userCart đều có -> merge item, giữ lại giỏ user
         Carts userCart = userOpt.get();
 
         for (CartItems gItem : guestCart.getItems()) {
@@ -159,21 +189,27 @@ public class CartsService {
                     );
 
             if (exist.isPresent()) {
+                // Cộng dồn quantity
                 CartItems userItem = exist.get();
-                userItem.setQuantity(userItem.getQuantity() + gItem.getQuantity());
+                userItem.setQuantity(
+                        (userItem.getQuantity() == null ? 0L : userItem.getQuantity())
+                                + (gItem.getQuantity() == null ? 0L : gItem.getQuantity())
+                );
                 userItem.setUpdatedAt(LocalDateTime.now());
                 cartItemsRepository.save(userItem);
             } else {
+                // Chuyển item guest sang giỏ user
                 gItem.setCart(userCart);
                 gItem.setUpdatedAt(LocalDateTime.now());
                 cartItemsRepository.save(gItem);
             }
         }
 
+        // Xóa giỏ guest
         cartsRepository.delete(guestCart);
 
-        // Quan trọng: đảm bảo giỏ user không còn sessionId
-        userCart.setSessionId(null);
+        // Đảm bảo giỏ user không còn sessionId
+        userCart.setSessionId(null);                      // QUAN TRỌNG
         userCart.setUpdatedAt(LocalDateTime.now());
         return cartsRepository.save(userCart);
     }

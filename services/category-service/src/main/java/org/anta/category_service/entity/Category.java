@@ -19,20 +19,26 @@ public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String name;
 
     @Column(unique = true, nullable = false)
     private String slug;
+
     private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    private Category parent;
-
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
-    private List<ProductSummaries> productSummaries;
+    /**
+     * Title dùng để phân loại nhóm cha: "men", "women", "kids", ...
+     * FE sẽ truyền fix cứng.
+     */
+    private String title;
 
     private LocalDateTime createdAt = LocalDateTime.now();
+
     private LocalDateTime updatedAt;
 
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }
