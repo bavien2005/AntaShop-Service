@@ -1,22 +1,24 @@
+// org/anta/services/revenue_service/controller/DashboardController.java
 package org.anta.services.revenue_service.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.anta.services.revenue_service.dto.RevenueDTO;
+import org.anta.services.revenue_service.dto.WeeklyRevenueComparisonDTO;
 import org.anta.services.revenue_service.service.DashboardService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/dashboard")
+@RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
 public class DashboardController {
 
     private final DashboardService dashboardService;
 
-    @GetMapping("/revenue")
-    public ResponseEntity<RevenueDTO> getRevenueComparison() {
-        return ResponseEntity.ok(dashboardService.getRevenueComparison());
+    // Endpoint cho FE vẽ biểu đồ
+    @GetMapping("/revenue/weekly")
+    public ResponseEntity<List<WeeklyRevenueComparisonDTO>> getWeeklyRevenueComparison() {
+        return ResponseEntity.ok(dashboardService.getWeeklyRevenueComparison());
     }
 }

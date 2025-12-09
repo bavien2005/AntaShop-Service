@@ -2,6 +2,8 @@ package org.anta.order_service.dto.request;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,6 +16,8 @@ public class OrderItemRequest {
     private Long variantId;     // bắt buộc để giữ tồn
 
     private Integer quantity;
+
+    private BigDecimal unitPrice;
 
     private String note;        // optional
 

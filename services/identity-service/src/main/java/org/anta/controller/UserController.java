@@ -1,5 +1,6 @@
 package org.anta.controller;
 
+import org.anta.dto.dashboard.UserMonthlyStatsResponse;
 import org.anta.dto.request.UserRequest;
 import org.anta.dto.response.UserResponse;
 import org.anta.service.UserService;
@@ -42,5 +43,12 @@ public class UserController {
     public ResponseEntity<?> delete(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.ok("Delete successfully: " + id);
+    }
+
+    @GetMapping("/stats/monthly/full")
+    public ResponseEntity<List<UserMonthlyStatsResponse>> getStatsFull(
+            @RequestParam int year
+    ) {
+        return ResponseEntity.ok(userService.getUserMonthlyStatsFull(year));
     }
 }

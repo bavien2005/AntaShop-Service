@@ -24,6 +24,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
     private final List<String> openPrefixes = List.of(
             "/api/auth",
+            "/api/user",
             "/api/product",
             "/api/products",
             "/api/public",
@@ -31,6 +32,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/address",
             "/api/cart",
             "/api/categories",
+            "/api/dashboard",
             "/actuator"
     );
 

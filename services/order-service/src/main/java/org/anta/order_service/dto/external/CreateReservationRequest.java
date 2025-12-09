@@ -10,6 +10,8 @@ import java.util.List;
 @Builder
 public class CreateReservationRequest {
 
+    private String requestId;
+
     private Long userId;
 
     private List<ReservationItem> items;

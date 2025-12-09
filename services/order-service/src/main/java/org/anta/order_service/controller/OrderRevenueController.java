@@ -1,20 +1,24 @@
+// org/anta/order_service/controller/OrderRevenueController.java
 package org.anta.order_service.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.anta.order_service.dto.response.WeeklyRevenueDTO;
 import org.anta.order_service.service.OrderRevenueService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/orders/revenue")
+@RequestMapping("/api/orders/revenue")
 @RequiredArgsConstructor
 public class OrderRevenueController {
+
     private final OrderRevenueService orderRevenueService;
 
-    @GetMapping("/actual")
-    public ResponseEntity<Double> getActualRevenue() {
-        return ResponseEntity.ok(orderRevenueService.getActualRevenue());
+    // CHỈ DÙNG ENDPOINT NÀY
+    @GetMapping("/weekly")
+    public ResponseEntity<List<WeeklyRevenueDTO>> getActualRevenueWeekly() {
+        return ResponseEntity.ok(orderRevenueService.getActualRevenueWeekly());
     }
 }

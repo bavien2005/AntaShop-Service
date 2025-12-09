@@ -38,14 +38,23 @@ public class OrderService {
         }
 
         // 1) Tính tiền từ FE gửi (ở step thực tế nên validate với price server-side)
+//        BigDecimal total = BigDecimal.ZERO;
+//        for (OrderItemRequest it : req.getItems()) {
+//            // ở đây giả sử đơn giá lấy từ FE hoặc tra thêm ở product-service (bạn có thể thêm Feign để lấy giá)
+//            // tạm thời: đơn giá = 0 -> để flow, thực tế nên bắt buộc FE truyền unitPrice hoặc ta query variant price
+//            BigDecimal unit = BigDecimal.ZERO;
+//            BigDecimal line = unit.multiply(BigDecimal.valueOf(it.getQuantity() != null ? it.getQuantity() : 0));
+//            total = total.add(line);
+//        }
         BigDecimal total = BigDecimal.ZERO;
         for (OrderItemRequest it : req.getItems()) {
-            // ở đây giả sử đơn giá lấy từ FE hoặc tra thêm ở product-service (bạn có thể thêm Feign để lấy giá)
-            // tạm thời: đơn giá = 0 -> để flow, thực tế nên bắt buộc FE truyền unitPrice hoặc ta query variant price
-            BigDecimal unit = BigDecimal.ZERO;
-            BigDecimal line = unit.multiply(BigDecimal.valueOf(it.getQuantity() != null ? it.getQuantity() : 0));
+            int qty = it.getQuantity() != null ? it.getQuantity() : 0;
+            BigDecimal unit = it.getUnitPrice() != null ? it.getUnitPrice() : BigDecimal.ZERO;
+
+            BigDecimal line = unit.multiply(BigDecimal.valueOf(qty));
             total = total.add(line);
         }
+
 
         // 2) Tạo bản ghi Order (trạng thái PENDING_PAYMENT)
         Order order = Order.builder()
@@ -55,23 +64,47 @@ public class OrderService {
                 .build();
         order = orderRepo.save(order);
 
+        // 💡 đảm bảo không null
+        if (order.getItems() == null) {
+            order.setItems(new java.util.ArrayList<>());
+        }
+
         // 3) OrderItems
+//        for (OrderItemRequest it : req.getItems()) {
+//            OrderItem oi = OrderItem.builder()
+//                    .order(order)
+//                    .productId(it.getProductId())
+//                    .variantId(it.getVariantId())
+//                    .quantity(it.getQuantity())
+//                    .unitPrice(BigDecimal.ZERO)  // TODO: set đơn giá thật
+//                    .lineTotal(BigDecimal.ZERO)  // TODO: unit*qty
+//                    .build();
+//            itemRepo.save(oi);
+//            order.getItems().add(oi);
+//        }
         for (OrderItemRequest it : req.getItems()) {
+            int qty = it.getQuantity() != null ? it.getQuantity() : 0;
+            BigDecimal unit = it.getUnitPrice() != null ? it.getUnitPrice() : BigDecimal.ZERO;
+            BigDecimal line = unit.multiply(BigDecimal.valueOf(qty));
+
             OrderItem oi = OrderItem.builder()
                     .order(order)
                     .productId(it.getProductId())
                     .variantId(it.getVariantId())
-                    .quantity(it.getQuantity())
-                    .unitPrice(BigDecimal.ZERO)  // TODO: set đơn giá thật
-                    .lineTotal(BigDecimal.ZERO)  // TODO: unit*qty
+                    .quantity(qty)
+                    .unitPrice(unit)
+                    .lineTotal(line)
                     .build();
+
             itemRepo.save(oi);
             order.getItems().add(oi);
         }
 
+
         // 4) Gọi product-service để tạo reservation giữ tồn
         CreateReservationRequest r = CreateReservationRequest.builder()
                 .userId(req.getUserId())
+                .requestId("order-" + order.getId())
                 .ttlSeconds(900) // 15 phút
                 .items(req.getItems().stream()
                         .map(i -> ReservationItem.builder()

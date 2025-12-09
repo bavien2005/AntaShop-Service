@@ -42,7 +42,7 @@ spring:
         - id: identity-users
           uri: http://localhost:8082
           predicates:
-            - Path=/api/users/**
+            - Path=/api/user/**
 
         - id: identity-address
           uri: http://localhost:8082

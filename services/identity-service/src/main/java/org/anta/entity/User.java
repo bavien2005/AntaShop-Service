@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.anta.enums.Role;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "users")
 @Data
@@ -31,5 +33,13 @@ public class User {
 
     @Column(name = "phone_number", nullable = false, unique = true, length = 15)
     private String phoneNumber;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }
 

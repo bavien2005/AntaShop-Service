@@ -2,6 +2,9 @@ package org.anta.dto.response;
 
 import org.anta.enums.Role;
 import lombok.Data;
+
+import java.time.LocalDateTime;
+
 @Data
 public class UserResponse {
 
@@ -16,5 +19,7 @@ public class UserResponse {
         private Role role;
 
         private String phoneNumber;
+
+        private LocalDateTime createdAt;
 
 }

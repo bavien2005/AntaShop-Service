@@ -26,6 +26,7 @@ public class AddressService {
 
         if(checked.isEmpty()) {
             throw new RuntimeException("not found user id :" +userId);
+
         }
         return addressRepository.findByUserId(userId)
                 .stream()

@@ -1,5 +1,6 @@
 package org.anta.service;
 
+import org.anta.dto.dashboard.UserMonthlyStatsResponse;
 import org.anta.dto.request.UserRequest;
 import org.anta.dto.response.UserResponse;
 import org.anta.entity.User;
@@ -90,6 +91,17 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
+    //dashboard
+    public List<UserMonthlyStatsResponse> getUserMonthlyStatsFull(int year) {
+        List<Object[]> rows = userRepository.countUsersByMonthFull(year);
 
+        return rows.stream()
+                .map(r -> new UserMonthlyStatsResponse(
+                        ((Number) r[0]).intValue(), // year
+                        ((Number) r[1]).intValue(), // month
+                        ((Number) r[2]).longValue() // count
+                ))
+                .toList();
+    }
 
 }

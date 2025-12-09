@@ -28,6 +28,10 @@ public class ReservationService {
     @Transactional
     public Reservation createReservation(CreateReservationRequest req) {
         String requestId = req.getRequestId();
+        if (requestId == null || requestId.isBlank()) {
+            // 🔐 fallback tránh null, nhưng chuẩn vẫn là bên order truyền vào
+            requestId = java.util.UUID.randomUUID().toString();
+        }
         if (requestId != null) {
             var existing = reservationRepo.findByRequestId(requestId);
             if (existing.isPresent()) {
@@ -46,11 +50,12 @@ public class ReservationService {
 
         List<ReservationItem> items = new ArrayList<>();
         for (CreateReservationRequest.ReservationLine line : req.getItems()) {
-            int updated = variantRepo.reduceStockIfAvailable(line.getVariantId(), line.getQuantity());
-            if (updated == 0) {
-                // rollback
-                throw new ReservationException("Not enough stock for variant " + line.getVariantId());
-            }
+            //bỏ tạm thời
+//            int updated = variantRepo.reduceStockIfAvailable(line.getVariantId(), line.getQuantity());
+//            if (updated == 0) {
+//                // rollback
+//                throw new ReservationException("Not enough stock for variant " + line.getVariantId());
+//            }
             ReservationItem ri = ReservationItem.builder()
                     .reservation(res)
                     .variantId(line.getVariantId())

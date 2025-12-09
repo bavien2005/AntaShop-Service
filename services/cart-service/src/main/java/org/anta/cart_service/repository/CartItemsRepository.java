@@ -26,9 +26,22 @@ public interface CartItemsRepository extends JpaRepository<CartItems, Long> {
             "ORDER BY SUM(ci.quantity) DESC LIMIT 10", nativeQuery = true)
     List<Object[]> findTop10ProductsNative();
 
-    @Query(value = "SELECT SUM(ci.quantity * ci.unit_price) " +
-            "FROM cart_items ci JOIN carts c ON ci.cart_id = c.id " +
-            "WHERE c.status = 'OPEN'", nativeQuery = true)
-    Double sumRevenueFromOpenCarts();
+//    @Query(value = "SELECT SUM(ci.quantity * ci.unit_price) " +
+//            "FROM cart_items ci JOIN carts c ON ci.cart_id = c.id " +
+//            "WHERE c.status = 'OPEN'", nativeQuery = true)
+//    Double sumRevenueFromOpenCarts();
+
+    @Query(value = """
+        SELECT 
+            DATE_FORMAT(ci.created_at, '%x-W%v') AS week_label,
+            SUM(ci.quantity * ci.unit_price) AS total
+        FROM cart_items ci
+        JOIN carts c ON ci.cart_id = c.id
+        WHERE c.status = 'OPEN'
+          AND ci.created_at >= DATE_SUB(CURDATE(), INTERVAL 12 WEEK)
+        GROUP BY week_label
+        ORDER BY week_label
+    """, nativeQuery = true)
+    List<Object[]> sumRevenueFromOpenCartsByWeek();
 
 }
