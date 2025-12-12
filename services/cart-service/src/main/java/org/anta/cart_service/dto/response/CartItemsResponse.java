@@ -26,4 +26,11 @@ public class CartItemsResponse {
     private LocalDateTime updatedAt;
 
     private Double totalAmount;
+
+    private String size;
+
+    private String color;
+
+    private String sku;
+
 }

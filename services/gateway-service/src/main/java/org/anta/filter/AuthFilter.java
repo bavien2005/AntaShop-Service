@@ -30,7 +30,10 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/public",
             "/api/cloud",
             "/api/address",
+            "/api/orders",
             "/api/cart",
+            "/api/payments",
+            "/api/momo",
             "/api/categories",
             "/api/dashboard",
             "/actuator"

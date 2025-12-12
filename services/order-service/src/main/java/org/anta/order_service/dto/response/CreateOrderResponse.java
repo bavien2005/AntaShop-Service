@@ -10,9 +10,13 @@ import lombok.*;
 public class CreateOrderResponse {
 
     private Long orderId;
-
     private String status;
-
-    private String payUrl;   // link thanh toán trả về cho FE
+    private String payUrl;
+    private String recipientName;
+    private String recipientPhone;
+    private String buyerName;
+    private String email;
+    private String orderNumber;
+    private Long total;
 
 }

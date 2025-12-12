@@ -65,22 +65,31 @@ public class CartsService {
             items.setUpdatedAt(LocalDateTime.now());
         } else {
             // Nếu chưa có thì tạo mới
-            // Gọi sang product-service để lấy thông tin sản phẩm
             ProductDTO product = productClient.getProductById(req.getProductId());
-
-            // Gọi sang cloud-service để lấy ảnh chính của sản phẩm
-            FileMetadataDTO file = cloudClient.getMainImage(req.getProductId());
+            FileMetadataDTO file = null;
+            try {
+                file = cloudClient.getMainImage(req.getProductId());
+            } catch (Exception e) {
+                // cloudClient now already handles exceptions, but keep safe-catch
+            }
 
             items = new CartItems();
             items.setCart(cart);
             items.setProductId(req.getProductId());
             items.setVariantId(req.getVariantId());
-            items.setProductName(product.getName());                 // lấy từ product-service
-            items.setUnitPrice(product.getPrice().doubleValue());    // lấy từ product-service
-            items.setImageUrl(file != null ? file.getUrl() : null);  // lấy từ cloud-service
+            items.setProductName(product != null ? product.getName() : null);
+            items.setUnitPrice(product != null && product.getPrice() != null ? product.getPrice().doubleValue() : 0.0);
+            // prefer cloud image, fallback to image in request (FE may provide)
+            items.setImageUrl(file != null ? file.getUrl() : req.getImageUrl());
+            // assign size/color/sku if provided from FE
+            items.setSize(req.getSize());
+            items.setColor(req.getColor());
+            // optional: store sku if entity has it (if not, skip)
+            // items.setSku(req.getSku()); // add field in entity if you want to store sku
             items.setQuantity(req.getQuantity());
             items.setCreatedAt(LocalDateTime.now());
             items.setUpdatedAt(LocalDateTime.now());
+            items.setSku(req.getSku());
         }
 
         cartItemsRepository.save(items);

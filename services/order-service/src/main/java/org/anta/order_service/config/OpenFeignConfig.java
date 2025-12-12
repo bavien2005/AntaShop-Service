@@ -5,5 +5,7 @@ import org.springframework.context.annotation.Bean;
 
 public class OpenFeignConfig {
     @Bean
-    Logger.Level feignLoggerLevel() { return Logger.Level.BASIC; }
+    Logger.Level feignLoggerLevel() {
+        return Logger.Level.BASIC;
+    }
 }

@@ -1,7 +1,5 @@
 server:
   port: 8084
-  servlet:
-    context-path: /order_db
 
 spring:
   cloud:
@@ -27,6 +25,10 @@ logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.web: DEBUG
+    org.springframework.http.converter: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+    org.apache.http: DEBUG
 
 product:
   reservation-base: http://localhost:8086/api/reservations

@@ -40,12 +40,16 @@ public class MomoService {
     private final MomoAPI momoAPI;
 
     public CreateMomoResponse createQRForPayment(String requestId,
-                               Long amount, String orderId) {
+                                                 Long amount, String partnerOrderIdInput) {
 
-        String partnerOrderId = (orderId != null ) ? orderId.toString() : UUID.randomUUID().toString();
+        // partnerOrderIdInput is expected to be already prepared by caller (e.g. "10-<requestId>")
+        String partnerOrderId = partnerOrderIdInput;
+        if (partnerOrderId == null || partnerOrderId.isBlank()) {
+            // if caller didn't supply a partnerOrderId, fallback to unique id
+            partnerOrderId = UUID.randomUUID().toString();
+        }
 
         String orderInfo = "Payment for order: " + partnerOrderId;
-
         String extraData = "";
 
         String rawSignature = String.format(
@@ -64,20 +68,15 @@ public class MomoService {
 
         log.info(" [CREATE] Raw string before signing:\n{}", rawSignature);
 
-        String prettySignnature = "" ;
+        String prettySignnature;
         try {
             prettySignnature = signHmacSHA256(rawSignature, SECRET_KEY);
             log.info("Signature: {}", prettySignnature);
-        }catch (Exception e){
-            log.error("Error while signing HMAC SHA256: {}" , e.getMessage() , e );
+        } catch (Exception e) {
+            log.error("Error while signing HMAC SHA256: {}" , e.getMessage(), e);
             throw new RuntimeException("Error creating signature for Momo request", e);
         }
 
-
-        if(prettySignnature.isBlank()){
-            log.error("Error while signing HMAC SHA256");
-            return null;
-        }
         CreateMomoRequest createMomoRequest = CreateMomoRequest.builder()
                 .partnerCode(PARTNER_CODE)
                 .requestType(REQUEST_TYPE)
@@ -92,55 +91,62 @@ public class MomoService {
                 .signature(prettySignnature)
                 .accessKey(ACCESS_KEY)
                 .build();
-        return momoAPI.createMomoQR(createMomoRequest);
+
+        // **Call MoMo once and return the single response**
+        CreateMomoResponse resp = momoAPI.createMomoQR(createMomoRequest);
+        log.info("MoMo resp: orderId={}, requestId={}, payUrl={}, deeplink={}, qrCodeUrl={}, resultCode={}, message={}",
+                resp.getOrderId(), resp.getRequestId(), resp.getPayUrl(), resp.getDeeplink(), resp.getQrCodeUrl(),
+                resp.getResultCode(), resp.getMessage());
+        return resp;
     }
 
 
-    public boolean verifyIpnSignature(Map<String, String> params) {
-        // Momo gửi lên một số field, điển hình: partnerCode, accessKey, requestId, orderId, amount, orderInfo,
-        // orderType, transId, message, responseTime, resultCode, payType, signature
-        // thu tu phai dung theo doc momo ipn
-        List<String> orderedFields = Arrays.asList(
-                "partnerCode",
-                "accessKey",
-                "requestId",
-                "orderId",
-                "amount",
-                "orderInfo",
-                "orderType",
-                "transId",
-                "message",
-                "responseTime",
-                "resultCode",
-                "payType"
-        );
 
-        String raw = orderedFields.stream()
-                .map(key -> key + "=" + Objects.toString(params.getOrDefault(key, ""), ""))
-                .collect(Collectors.joining("&"));
-
-        log.info(" [IPN] Raw data received from MoMo:\n{}", raw);
-
-        String receivedSignature = params.get("signature");
-        if (receivedSignature == null) {
-            log.warn("IPN verify: no signature in params");
-            return false;
-        }
-
-        String computed;
-        try {
-            computed = signHmacSHA256(raw, SECRET_KEY);
-            log.info(" [IPN] Computed Signature (server): {}", computed);
-            log.info(" [IPN] Received Signature (MoMo):  {}", receivedSignature);
-        } catch (Exception e) {
-            log.error("Error computing IPN signature", e);
-            return false;
-        }
-
-        boolean ok = computed.equals(receivedSignature);
-        log.info("IPN verify: computed == received ? {} (computed={}, received={})", ok, computed, receivedSignature);
-        return ok;
-    }
+//    public boolean verifyIpnSignature(Map<String, String> params) {
+//        // Momo gửi lên một số field, điển hình: partnerCode, accessKey, requestId, orderId, amount, orderInfo,
+//        // orderType, transId, message, responseTime, resultCode, payType, signature
+//        // thu tu phai dung theo doc momo ipn
+//        List<String> orderedFields = Arrays.asList(
+//                "partnerCode",
+//                "accessKey",
+//                "requestId",
+//                "orderId",
+//                "amount",
+//                "orderInfo",
+//                "orderType",
+//                "transId",
+//                "message",
+//                "responseTime",
+//                "resultCode",
+//                "payType"
+//        );
+//
+//        String raw = orderedFields.stream()
+//                .map(key -> key + "=" + Objects.toString(params.getOrDefault(key, ""), ""))
+//                .collect(Collectors.joining("&"));
+//
+//        log.info(" [IPN] Raw data received from MoMo:\n{}", raw);
+//
+//        String receivedSignature = params.get("signature");
+//        if (receivedSignature == null) {
+//            log.warn("IPN verify: no signature in params");
+//            return false;
+//        }
+//
+//        String computed;
+//        try {
+//            computed = signHmacSHA256(raw, SECRET_KEY);
+//            log.info(" [IPN] Computed Signature (server): {}", computed);
+//            log.info(" [IPN] Received Signature (MoMo):  {}", receivedSignature);
+//        } catch (Exception e) {
+//            log.error("Error computing IPN signature", e);
+//            return false;
+//        }
+//
+//        boolean ok = computed.equals(receivedSignature);
+//        log.info("IPN verify: computed == received ? {} (computed={}, received={})", ok, computed, receivedSignature);
+//        return ok;
+//    }
 
     // HMAC SHA256 signing method
     // truyền dử liệu và key vào để mã hóa giữa client và server

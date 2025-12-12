@@ -33,5 +33,18 @@ public class OrderItem {
     private BigDecimal unitPrice;      // đơn giá tại thời điểm đặt
 
     @Column(precision = 14, scale = 2, nullable = false)
-    private BigDecimal lineTotal;      // unitPrice * quantity
+    private BigDecimal lineTotal;
+
+    // trong OrderItem entity
+    @Column(name="product_name", length=500)
+    private String productName;
+
+    @Column(name="product_image", length=1000)
+    private String imageUrl;
+
+    @Column(name="size", length=50)
+    private String size;
+
+    @Column(name="color", length=50)
+    private String color;// unitPrice * quantity
 }

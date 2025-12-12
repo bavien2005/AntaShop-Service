@@ -30,6 +30,12 @@ public class CartItems {
     private Double unitPrice;
     @Column(name = "quantity")
     private Long quantity;
+    @Column(name = "size")
+    private String size;
+    @Column(name = "color")
+    private String color;
+    @Column(name = "sku")
+    private String sku;
     @Column(name = "created_at")
     private LocalDateTime createdAt= LocalDateTime.now();
 

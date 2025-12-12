@@ -18,5 +18,12 @@ public class CreateOrderRequest {
 
     private String shippingAddress;    // tùy bài toán
 
-    private String paymentMethod;      // "MOMO" ...
+    private String paymentMethod;
+
+    private String recipientName;
+    private String recipientPhone;
+    private String buyerName;
+    private String email;
+    private String orderNumber;
+    private Long total;// "MOMO" ...
 }

@@ -13,10 +13,20 @@ import java.util.List;
 public class OrderResponse {
     private Long id;
     private Long userId;
+    private String orderNumber;
     private String status;
     private BigDecimal totalAmount;
     private String payUrl;
+    private String buyerName;
+    private String recipientName;
+    private String shippingAddress;
+    private String shippingService;
+    private String trackingNumber;
+    private String estimatedDelivery; // ISO date string yyyy-MM-dd
+    private String createdAt; // ISO string
     private List<Item> items;
+    private String recipientPhone;
+    private String buyerEmail;
 
     @Getter
     @Setter
@@ -29,5 +39,11 @@ public class OrderResponse {
         private Integer quantity;
         private BigDecimal unitPrice;
         private BigDecimal lineTotal;
+
+        // optional product attributes
+        private String name;
+        private String image;
+        private String size;
+        private String color;
     }
 }
