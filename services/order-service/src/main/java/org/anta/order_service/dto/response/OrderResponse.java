@@ -27,6 +27,7 @@ public class OrderResponse {
     private List<Item> items;
     private String recipientPhone;
     private String buyerEmail;
+    private Boolean refundRequested;
 
     @Getter
     @Setter

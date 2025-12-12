@@ -16,14 +16,30 @@ public class CreateOrderRequest {
 
     private List<OrderItemRequest> items;
 
-    private String shippingAddress;    // tùy bài toán
+    private String shippingAddress;
 
     private String paymentMethod;
 
     private String recipientName;
+
     private String recipientPhone;
+
     private String buyerName;
+
     private String email;
+
     private String orderNumber;
-    private Long total;// "MOMO" ...
+
+    private Long total;                // "MOMO" ...
+
+    private Long shipping;        // phí vận chuyển (vietnamdong)
+
+    private String shippingMethod; // "standard" | "express" | "superExpress"
+
+    private Integer discount;      // nếu percent, hoặc fixed tuỳ loại (cần thống nhất)
+
+    private Long discountAmount;
+
+    private String promoCode;
+
 }

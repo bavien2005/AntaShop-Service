@@ -18,5 +18,4 @@ public class CreateOrderResponse {
     private String email;
     private String orderNumber;
     private Long total;
-
 }

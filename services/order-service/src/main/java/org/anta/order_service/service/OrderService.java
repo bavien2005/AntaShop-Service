@@ -89,6 +89,11 @@ public class OrderService {
                 .shippingAddress(req.getShippingAddress())
                 .status(OrderStatus.PENDING_PAYMENT)
                 .totalAmount(total)
+                .paymentMethod(req.getPaymentMethod())
+                .shippingMethod(req.getShippingMethod())
+                .shippingFee(req.getShipping())
+                .discountAmount(req.getDiscountAmount() != null ? req.getDiscountAmount() : 0L)
+                .promoCode(req.getPromoCode())
                 .build();
 
         order = orderRepo.save(order);
@@ -346,11 +351,15 @@ public class OrderService {
         orderRepo.save(order);
     }
     @Transactional(readOnly = true)
-    public List<Order> findOrders(String search, String status, String orderNumber) {
-        // lấy all (hoặc có thể viết query với Specification nếu DB lớn)
+    public List<Order> findOrders(Long userId, String search, String status, String orderNumber) {
         List<Order> all = orderRepo.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
         Stream<Order> s = all.stream();
 
+        if (userId != null) {
+            s = s.filter(o -> o.getUserId() != null && o.getUserId().equals(userId));
+        }
+
+        // giữ nguyên filter cũ của bạn
         if (orderNumber != null && !orderNumber.isBlank()) {
             s = s.filter(o -> orderNumber.equals(String.valueOf(o.getOrderNumber())) ||
                     (o.getPartnerOrderId() != null && o.getPartnerOrderId().contains(orderNumber)));
@@ -366,9 +375,7 @@ public class OrderService {
             try {
                 OrderStatus st = OrderStatus.valueOf(status.toUpperCase());
                 s = s.filter(o -> o.getStatus() == st);
-            } catch (IllegalArgumentException ex) {
-                // ignore invalid status filter
-            }
+            } catch (IllegalArgumentException ignored) {}
         }
 
         return s.collect(Collectors.toList());
@@ -447,4 +454,75 @@ public class OrderService {
         o.setUpdatedAt(LocalDateTime.now());
         orderRepo.save(o);
     }
+
+    // OrderService.java
+
+    @Transactional
+    public Map<String, Object> adminCancelOrRefund(Long id) {
+        Order o = orderRepo.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // PAID -> không cancel kiểu thường, mà chuyển CANCELLED + refundRequested=true
+        if (o.getStatus() == OrderStatus.PAID) {
+            o.setStatus(OrderStatus.CANCELLED);
+            o.setRefundRequested(true); // ✅ cần field
+            o.setUpdatedAt(LocalDateTime.now());
+            orderRepo.save(o);
+
+            return Map.of(
+                    "deleted", false,
+                    "refundRequested", true,
+                    "message", "Đã ghi nhận yêu cầu hoàn lại tiền"
+            );
+        }
+
+        // chưa PAID -> cancel bình thường + trả reservation về kho
+        if (o.getReservationId() != null) {
+            reservationClient.cancel(o.getReservationId());
+        }
+        o.setStatus(OrderStatus.CANCELLED);
+        o.setRefundRequested(false);
+        o.setUpdatedAt(LocalDateTime.now());
+        orderRepo.save(o);
+
+        return Map.of(
+                "deleted", false,
+                "refundRequested", false,
+                "message", "Đã hủy đơn hàng"
+        );
+    }
+
+    @Transactional
+    public Map<String, Object> adminDeleteOrRefund(Long id) {
+        Order o = orderRepo.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // PAID -> không hard delete, chuyển sang refund request
+        if (o.getStatus() == OrderStatus.PAID) {
+            o.setStatus(OrderStatus.CANCELLED);
+            o.setRefundRequested(true);
+            o.setUpdatedAt(LocalDateTime.now());
+            orderRepo.save(o);
+
+            return Map.of(
+                    "deleted", false,
+                    "refundRequested", true,
+                    "message", "Đơn đã thanh toán: chuyển sang yêu cầu hoàn lại tiền (không xóa dữ liệu)"
+            );
+        }
+
+        // chưa PAID -> xóa thật, xóa cả items + trả reservation (nếu còn)
+        if (o.getReservationId() != null) {
+            try { reservationClient.cancel(o.getReservationId()); } catch (Exception ignored) {}
+        }
+
+        // ✅ xóa items trước để chắc chắn
+        itemRepo.deleteByOrderId(o.getId());
+        orderRepo.delete(o);
+
+        return Map.of(
+                "deleted", true,
+                "refundRequested", false,
+                "message", "Đã xóa đơn hàng"
+        );
+    }
+
 }

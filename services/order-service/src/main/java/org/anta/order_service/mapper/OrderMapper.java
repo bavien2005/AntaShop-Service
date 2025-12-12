@@ -24,6 +24,7 @@ public interface OrderMapper {
     @Mapping(target="payUrl", source = "order.payUrl")
     @Mapping(target="recipientPhone", source = "order.recipientPhone")
     @Mapping(target="buyerEmail", source = "order.buyerEmail")
+    @Mapping(target="refundRequested", source = "refundRequested")
     OrderResponse toResponse(Order order);
 
     default List<OrderResponse.Item> mapItems(List<OrderItem> items){
@@ -53,4 +54,5 @@ public interface OrderMapper {
             return b.build();
         }).collect(Collectors.toList());
     }
+
 }

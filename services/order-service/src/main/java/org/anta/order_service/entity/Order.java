@@ -94,4 +94,22 @@ public class Order {
 
     @Column(name = "estimated_delivery")
     private LocalDate estimatedDelivery;
+
+    @Column(name = "payment_method")
+    private String paymentMethod;
+
+    @Column(name = "shipping_method")
+    private String shippingMethod;
+
+    @Column(name = "shipping_fee")
+    private Long shippingFee;
+
+    @Column(name = "discount_amount")
+    private Long discountAmount;
+
+    @Column(name = "promo_code")
+    private String promoCode;
+
+    @Column(name ="refund_requested")
+    private Boolean refundRequested;
 }

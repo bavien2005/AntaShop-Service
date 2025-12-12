@@ -1,5 +1,7 @@
 package org.anta.order_service.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.anta.order_service.dto.request.CreateOrderRequest;
 import org.anta.order_service.dto.request.ShippingRequest;
@@ -24,7 +26,13 @@ public class OrderController {
     private Logger log = Logger.getLogger(OrderController.class.getName());
 
     @PostMapping("/create")
-    public ResponseEntity<CreateOrderResponse> create(@RequestBody CreateOrderRequest req){
+    public ResponseEntity<CreateOrderResponse> create(@RequestBody CreateOrderRequest req) {
+        try {
+            log.info("incoming createOrder request: " +
+                    new ObjectMapper().writeValueAsString(req));
+        } catch (JsonProcessingException e) {
+            log.warning("Cannot serialize CreateOrderRequest: " + e.getMessage());
+        }
         return ResponseEntity.ok(orderService.createOrder(req));
     }
 
@@ -80,12 +88,13 @@ public class OrderController {
     // 1) List orders (GET /api/orders) — optional query params: search, status, orderNumber
     @GetMapping
     public ResponseEntity<List<OrderResponse>> list(
+            @RequestParam(required = false) Long userId,   // ✅ thêm
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String orderNumber) {
 
-        List<OrderResponse> list = orderService.findOrders(search, status, orderNumber)
-                .stream().map(order -> orderService.toResponse(order)).collect(Collectors.toList());
+        List<OrderResponse> list = orderService.findOrders(userId, search, status, orderNumber)
+                .stream().map(orderService::toResponse).collect(Collectors.toList());
         return ResponseEntity.ok(list);
     }
 
@@ -103,5 +112,19 @@ public class OrderController {
     public ResponseEntity<?> arrangeShipping(@PathVariable Long id, @RequestBody ShippingRequest req) {
         orderService.arrangeShipping(id, req);
         return ResponseEntity.ok(Map.of("message", "Shipping scheduled"));
+    }
+
+    // OrderController.java
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        Map<String, Object> resp = orderService.adminDeleteOrRefund(id);
+        // resp: { deleted: true/false, refundRequested: true/false, message: ... }
+        return ResponseEntity.ok(resp);
+    }
+
+    @PostMapping("/{id}/cancel-admin")
+    public ResponseEntity<?> cancelAdmin(@PathVariable Long id) {
+        Map<String, Object> resp = orderService.adminCancelOrRefund(id);
+        return ResponseEntity.ok(resp);
     }
 }
