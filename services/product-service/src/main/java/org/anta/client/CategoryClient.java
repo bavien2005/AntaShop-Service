@@ -1,6 +1,7 @@
 package org.anta.client;
 
 import lombok.RequiredArgsConstructor;
+import org.anta.dto.response.CategoryResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;

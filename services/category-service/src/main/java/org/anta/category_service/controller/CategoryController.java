@@ -1,4 +1,3 @@
-// src/main/java/org/anta/category_service/controller/CategoryController.java
 package org.anta.category_service.controller;
 
 import lombok.RequiredArgsConstructor;
@@ -20,13 +19,12 @@ import java.util.stream.Collectors;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/categories")
-@CrossOrigin(origins = "*") // cho FE gọi trực tiếp qua 8087 hoặc gateway
+@CrossOrigin(origins = "*")
 public class CategoryController {
 
     private final CategoryService categoryService;
     private final CategoryMapper categoryMapper;
 
-    /** GET /api/categories?q=&title=&page=&size=  -> phân trang + filter */
     @GetMapping
     public ResponseEntity<Page<CategoryResponse>> list(
             @RequestParam(value = "q", required = false) String q,
@@ -37,7 +35,6 @@ public class CategoryController {
         Page<CategoryResponse> mapped = page.map(categoryMapper::toResponse);
         return ResponseEntity.ok(mapped);
     }
-    /** GET /api/categories/grouped  -> group theo title (men, women, accessories, kids, …) */
     @GetMapping("/grouped")
     public ResponseEntity<Map<String, List<CategoryResponse>>> grouped() {
         Map<String, List<Category>> grouped = categoryService.groupedByTitle();
@@ -51,20 +48,24 @@ public class CategoryController {
         return ResponseEntity.ok(dto);
     }
 
-    /** POST /api/categories  -> tạo mới (Admin dùng) */
     @PostMapping
     public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryRequest rq) {
         Category saved = categoryService.create(rq);
         return ResponseEntity.ok(categoryMapper.toResponse(saved));
     }
 
-    // src/main/java/org/anta/category_service/controller/CategoryController.java
     @GetMapping("/{id}")
     public ResponseEntity<CategoryResponse> getById(@PathVariable Long id) {
         Category category = categoryService.getById(id); // sẽ viết ở bước 2
         return ResponseEntity.ok(categoryMapper.toResponse(category));
     }
-
-
-    // Nếu chỉ cần “thêm ở admin và hiển thị cho user” thì PUT/DELETE không bắt buộc.
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> delete(@PathVariable Long id) {
+        int deletedProducts = categoryService.deleteCategoryAndProducts(id);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "categoryId", id,
+                "deletedProducts", deletedProducts
+        ));
+    }
 }

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 
 @RestController
@@ -90,6 +91,17 @@ public class ProductController {
     @GetMapping("/by-category/{categoryId}")
     public ResponseEntity<List<ProductResponse>> byCategory(@PathVariable Long categoryId){
         return ResponseEntity.ok(productService.listByCategory(categoryId));
+    }
+
+    @DeleteMapping("/by-category/{categoryId}")
+    public ResponseEntity<Map<String, Object>> deleteByCategory(@PathVariable Long categoryId) {
+        int deleted = productService.deleteProductsByCategory(categoryId);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "categoryId", categoryId,
+                "deletedProducts", deleted
+        ));
+
     }
 
 }

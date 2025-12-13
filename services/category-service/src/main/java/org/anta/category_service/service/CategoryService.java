@@ -77,6 +77,7 @@
 package org.anta.category_service.service;
 
 import lombok.RequiredArgsConstructor;
+import org.anta.category_service.client.ProductClient;
 import org.anta.category_service.dto.request.CategoryRequest;
 import org.anta.category_service.entity.Category;
 import org.anta.category_service.exception.ConflictException;
@@ -95,9 +96,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CategoryService {
+
+
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
-
+    private final ProductClient productClient;
     @Transactional
     public Category create(CategoryRequest request) {
         if (categoryRepository.existsBySlug(request.getSlug())) {
@@ -126,10 +129,22 @@ public class CategoryService {
                         (c.getTitle() == null ? "" : c.getTitle().toLowerCase())));
     }
 
-    // src/main/java/org/anta/category_service/service/CategoryService.java
+
     public Category getById(Long id) {
         return categoryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Category not found with id: " + id));
+    }
+
+    @Transactional
+    public int deleteCategoryAndProducts(Long categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NotFoundException("Category not found with id: " + categoryId));
+
+        int deletedProducts = productClient.deleteProductsByCategory(categoryId);
+
+        categoryRepository.delete(category);
+
+        return deletedProducts;
     }
 
 }

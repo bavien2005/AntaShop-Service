@@ -46,7 +46,7 @@ public class ProductVariantController {
 
     @PostMapping("/reserve/id/{id}")
     public ResponseEntity<?>  reserve(@PathVariable("id") Long id ,
-                                       @Valid @RequestBody PurchaseItemRequest purchaseItemRequest){
+                                      @Valid @RequestBody PurchaseItemRequest purchaseItemRequest){
         productVariantService.reserveStock(id , purchaseItemRequest.getQuantity());
         return ResponseEntity.ok().body("reserve");
     }

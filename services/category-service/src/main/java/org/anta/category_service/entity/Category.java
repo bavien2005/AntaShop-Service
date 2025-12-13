@@ -14,16 +14,19 @@ public class Category {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)      private String name;
+    @Column(nullable = false)
+    private String name;
+
     @Column(unique = true, nullable = false)
     private String slug;
 
-    @Column(length = 500)          private String description;
+    @Column(length = 500)
+    private String description;
 
-    /** Nhóm cha: men / women / accessories / kids ... */
     @Column(nullable = false)      private String title;
 
     private LocalDateTime createdAt;
+
     private LocalDateTime updatedAt;
 
     @PrePersist

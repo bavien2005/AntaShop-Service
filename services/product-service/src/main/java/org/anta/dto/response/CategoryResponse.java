@@ -1,4 +1,4 @@
-package org.anta.client;
+package org.anta.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;

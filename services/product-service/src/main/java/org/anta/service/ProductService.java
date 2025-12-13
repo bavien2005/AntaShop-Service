@@ -3,7 +3,7 @@ package org.anta.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.anta.client.CategoryClient;
-import org.anta.client.CategoryResponse;
+import org.anta.dto.response.CategoryResponse;
 import org.anta.dto.request.ProductRequest;
 import org.anta.dto.request.ProductVariantRequest;
 import org.anta.dto.response.FileMetadataDto;
@@ -759,6 +759,19 @@ public class ProductService {
         }).toList();
     }
 
+    @Transactional
+    public int deleteProductsByCategory(Long categoryId) {
+        List<Product> products = productRepository.findByCategoryId(categoryId);
+        if (products == null || products.isEmpty()) return 0;
 
+        // lấy danh sách id trước để tránh issues khi delete trong loop
+        List<Long> ids = products.stream().map(Product::getId).toList();
+
+        for (Long id : ids) {
+            // reuse logic cũ: deleteProduct đã có xóa cloud + xóa DB
+            deleteProduct(id);
+        }
+        return ids.size();
+    }
 
 }
