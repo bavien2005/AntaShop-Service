@@ -30,4 +30,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         ORDER BY p.id DESC
         """, nativeQuery = true)
     List<Product> searchFullTextLoose(@Param("q") String q);
+
+    List<Product> findByCategoryId(Long categoryId);
 }

@@ -1,11 +1,20 @@
 package org.anta.category_service.dto.request;
 
+import jakarta.validation.constraints.*;
 import lombok.Data;
-import org.anta.category_service.entity.Category;
+
 @Data
 public class CategoryRequest {
+    @NotBlank(message = "name is required")
     private String name;
+
+    @NotBlank(message = "slug is required")
+    @Pattern(regexp = "^[a-z0-9]+(?:-[a-z0-9]+)*$", message = "slug must be kebab-case")
     private String slug;
+
+    @Size(max = 500, message = "description max 500 chars")
     private String description;
-    private String title;
+
+    @NotBlank(message = "title is required")
+    private String title; // men / women / accessories / kids ...
 }

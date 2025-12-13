@@ -20,8 +20,11 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping("/all")
-    public ResponseEntity<List<ProductResponse>> getAllProduct(){
-        return ResponseEntity.ok(productService.getAllProduct());
+    public ResponseEntity<List<ProductResponse>> list(
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String categorySlug
+    ) {
+        return ResponseEntity.ok(productService.getAllFiltered(title, categorySlug));
     }
 
     @GetMapping("/{id}")
@@ -83,4 +86,10 @@ public class ProductController {
     public ResponseEntity<List<ProductResponse>> search(@RequestParam(name = "q", required = false) String q) {
         return ResponseEntity.ok(productService.searchProducts(q));
     }
+
+    @GetMapping("/by-category/{categoryId}")
+    public ResponseEntity<List<ProductResponse>> byCategory(@PathVariable Long categoryId){
+        return ResponseEntity.ok(productService.listByCategory(categoryId));
+    }
+
 }

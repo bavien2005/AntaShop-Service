@@ -3,6 +3,7 @@ package org.anta.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.anta.client.CategoryClient;
+import org.anta.client.CategoryResponse;
 import org.anta.dto.request.ProductRequest;
 import org.anta.dto.request.ProductVariantRequest;
 import org.anta.dto.response.FileMetadataDto;
@@ -689,5 +690,75 @@ public class ProductService {
             return response;
         }).collect(Collectors.toList());
     }
+
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> listByCategory(Long categoryId) {
+        List<Product> products = productRepository.findByCategoryId(categoryId);
+        return products.stream().map(p -> {
+            ProductResponse r = productMapper.toResponse(p);
+
+            List<ProductVariant> vars = productVariantRepository.findByProductId(p.getId());
+            r.setVariants(productVariantMapper.toResponseList(vars));
+
+            int total = (vars == null || vars.isEmpty())
+                    ? (p.getTotalStock() == null ? 0 : p.getTotalStock())
+                    : vars.stream().mapToInt(v -> v.getStock() == null ? 0 : v.getStock()).sum();
+            r.setTotalStock(total);
+
+            if (r.getImages() != null && !r.getImages().isEmpty()) r.setThumbnail(r.getImages().get(0));
+
+            double displayPrice = computeDisplayPrice(p);
+            r.setPrice(java.math.BigDecimal.valueOf(displayPrice));
+            if (r.getRating() == null) r.setRating(5);
+            if (r.getSales() == null) r.setSales(0L);
+            return r;
+        }).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAllFiltered(String title, String categorySlug) {
+        List<Product> products;
+
+        if (title != null && categorySlug != null) {
+            Optional<Long> catIdOpt = categoryClient.resolveCategoryId(title, categorySlug);
+            products = catIdOpt.map(productRepository::findByCategoryId).orElse(List.of());
+        } else if (title != null) {
+            Map<String, List<CategoryResponse>> grouped = categoryClient.getGrouped();
+            List<CategoryResponse> cats = grouped.getOrDefault(title, grouped.get(title.toLowerCase()));
+            if (cats == null || cats.isEmpty()) return List.of();
+            products = cats.stream()
+                    .flatMap(c -> productRepository.findByCategoryId(c.getId()).stream())
+                    .toList();
+        } else if (categorySlug != null) {
+            Map<String, List<CategoryResponse>> grouped = categoryClient.getGrouped();
+            Optional<Long> catIdOpt = grouped.values().stream()
+                    .flatMap(List::stream)
+                    .filter(c -> c.getSlug()!=null && c.getSlug().equalsIgnoreCase(categorySlug))
+                    .map(CategoryResponse::getId)
+                    .findFirst();
+            products = catIdOpt.map(productRepository::findByCategoryId).orElse(List.of());
+        } else {
+            products = productRepository.findAll();
+        }
+
+        // map -> ProductResponse (tính variants/stock/price/thumbnail như bạn đang làm)
+        return products.stream().map(p -> {
+            ProductResponse r = productMapper.toResponse(p);
+            List<ProductVariant> vars = productVariantRepository.findByProductId(p.getId());
+            r.setVariants(productVariantMapper.toResponseList(vars));
+            int total = (vars==null||vars.isEmpty())
+                    ? (p.getTotalStock()==null?0:p.getTotalStock())
+                    : vars.stream().mapToInt(v -> v.getStock()==null?0:v.getStock()).sum();
+            r.setTotalStock(total);
+            if (r.getImages()!=null && !r.getImages().isEmpty()) r.setThumbnail(r.getImages().get(0));
+            r.setPrice(BigDecimal.valueOf(computeDisplayPrice(p)));
+            if (r.getRating()==null) r.setRating(5);
+            if (r.getSales()==null) r.setSales(0L);
+            return r;
+        }).toList();
+    }
+
+
 
 }

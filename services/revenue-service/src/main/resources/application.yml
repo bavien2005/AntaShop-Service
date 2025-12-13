@@ -9,7 +9,7 @@ services:
   cart:
     url: http://localhost:8088   # Cart Service chạy ở port 8088
   order:
-    url: http://localhost:8084/order_db   # Order Service chạy ở port 8084
+    url: http://localhost:8084   # Order Service chạy ở port 8084
 
 logging:
   level:

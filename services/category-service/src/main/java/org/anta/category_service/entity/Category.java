@@ -1,13 +1,8 @@
 package org.anta.category_service.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "categories")
@@ -16,29 +11,24 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class Category {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
-
+    @Column(nullable = false)      private String name;
     @Column(unique = true, nullable = false)
     private String slug;
 
-    private String description;
+    @Column(length = 500)          private String description;
 
-    /**
-     * Title dùng để phân loại nhóm cha: "men", "women", "kids", ...
-     * FE sẽ truyền fix cứng.
-     */
-    private String title;
+    /** Nhóm cha: men / women / accessories / kids ... */
+    @Column(nullable = false)      private String title;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
-
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @PrePersist
+    public void prePersist() { this.createdAt = LocalDateTime.now(); }
+
     @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
+    public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
 }
