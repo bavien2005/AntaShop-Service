@@ -78,4 +78,9 @@ public class ProductController {
         Product updated = productService.removeCategory(productId);
         return ResponseEntity.ok(updated);
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ProductResponse>> search(@RequestParam(name = "q", required = false) String q) {
+        return ResponseEntity.ok(productService.searchProducts(q));
+    }
 }

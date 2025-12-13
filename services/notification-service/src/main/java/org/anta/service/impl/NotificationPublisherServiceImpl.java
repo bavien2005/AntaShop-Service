@@ -22,6 +22,14 @@ public class NotificationPublisherServiceImpl implements NotificationPublisherSe
 
     @Override
     public String publishEmail(NotificationEmailRequest req) {
+
+        if (req.getIdempotencyKey() != null && !req.getIdempotencyKey().isBlank()) {
+            var existed = repo.findByIdempotencyKey(req.getIdempotencyKey());
+            if (existed.isPresent()) {
+                return existed.get().getId(); // ✅ không tạo request mới
+            }
+        }
+
         String requestId = UUID.randomUUID().toString();
         NotificationRequestEntity entity = NotificationRequestEntity.builder()
                 .id(requestId)
@@ -34,9 +42,9 @@ public class NotificationPublisherServiceImpl implements NotificationPublisherSe
                 .updatedAt(LocalDateTime.now())
                 .idempotencyKey(req.getIdempotencyKey())
                 .build();
+
         repo.save(entity);
-        rabbitTemplate.convertAndSend("notifications-exchange",
-                "notifications.email", requestId);
+        rabbitTemplate.convertAndSend("notifications-exchange", "notifications.email", requestId);
         return requestId;
     }
 }

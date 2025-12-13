@@ -649,4 +649,45 @@ public class ProductService {
 
         return productRepository.save(product);
     }
+
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> searchProducts(String q) {
+        if (q == null || q.trim().isEmpty()) {
+            // nếu không có query, trả về tất cả (hoặc trả về [])
+            return getAllProduct();
+        }
+
+        String keyword = q.trim();
+
+        List<Product> products = productRepository.searchFullTextLoose(keyword);
+
+        return products.stream().map(product -> {
+            ProductResponse response = productMapper.toResponse(product);
+
+            List<ProductVariant> variants = productVariantRepository.findByProductId(product.getId());
+            response.setVariants(productVariantMapper.toResponseList(variants));
+
+            int totalStock;
+            if (variants != null && !variants.isEmpty()) {
+                totalStock = variants.stream().mapToInt(v -> v.getStock() == null ? 0 : v.getStock()).sum();
+            } else {
+                totalStock = product.getTotalStock() != null ? product.getTotalStock() : 0;
+            }
+            response.setTotalStock(totalStock);
+
+            if (response.getImages() != null && !response.getImages().isEmpty()) {
+                response.setThumbnail(response.getImages().get(0));
+            }
+
+            double displayPrice = computeDisplayPrice(product);
+            response.setPrice(BigDecimal.valueOf(displayPrice));
+
+            if (response.getRating() == null) response.setRating(5);
+            if (response.getSales() == null) response.setSales(0L);
+
+            return response;
+        }).collect(Collectors.toList());
+    }
+
 }
