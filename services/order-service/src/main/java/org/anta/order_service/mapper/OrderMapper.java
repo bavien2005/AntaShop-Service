@@ -25,6 +25,8 @@ public interface OrderMapper {
     @Mapping(target="recipientPhone", source = "order.recipientPhone")
     @Mapping(target="buyerEmail", source = "order.buyerEmail")
     @Mapping(target="refundRequested", source = "refundRequested")
+    @Mapping(target="shippingFee", source="order.shippingFee")
+    @Mapping(target="discountAmount", source="order.discountAmount")
     OrderResponse toResponse(Order order);
 
     default List<OrderResponse.Item> mapItems(List<OrderItem> items){

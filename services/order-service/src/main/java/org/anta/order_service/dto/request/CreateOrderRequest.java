@@ -2,6 +2,8 @@ package org.anta.order_service.dto.request;
 
 
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.*;
 
 
@@ -32,7 +34,8 @@ public class CreateOrderRequest {
 
     private Long total;                // "MOMO" ...
 
-    private Long shipping;        // phí vận chuyển (vietnamdong)
+    @JsonAlias({"shippingFee","shipping_fee","shippingCost","shipping_cost","shipping"})
+    private Long shippingFee;        // phí vận chuyển (vietnamdong)
 
     private String shippingMethod; // "standard" | "express" | "superExpress"
 
@@ -41,5 +44,4 @@ public class CreateOrderRequest {
     private Long discountAmount;
 
     private String promoCode;
-
 }

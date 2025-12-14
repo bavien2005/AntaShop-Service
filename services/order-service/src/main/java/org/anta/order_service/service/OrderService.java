@@ -53,6 +53,10 @@ public class OrderService {
 
         log.info("Creating order for userId={}, itemsCount={}", req.getUserId(), req.getItems().size());
 
+        long shippingFeeVnd = req.getShippingFee() != null ? req.getShippingFee() : 0L;
+        long discountVnd =
+                req.getDiscountAmount() != null ? req.getDiscountAmount()
+                        : (req.getDiscount() != null ? req.getDiscount().longValue() : 0L);
         // 1) compute total & gather variant/product metadata (cache to avoid duplicate calls)
         BigDecimal total = BigDecimal.ZERO;
         Map<Long, VariantDto> variantCache = new java.util.HashMap<>();
@@ -78,23 +82,34 @@ public class OrderService {
                 ? orderNumberProvided
                 : ("ANT" + String.valueOf(System.currentTimeMillis()).substring(Math.max(0, String.valueOf(System.currentTimeMillis()).length()-8)));
 
+        // total hiện tại đang là subtotal items
+        BigDecimal subtotal = total;
+        BigDecimal totalPayable = subtotal
+                .subtract(BigDecimal.valueOf(discountVnd))
+                .add(BigDecimal.valueOf(shippingFeeVnd));
+        if (totalPayable.signum() < 0) totalPayable = BigDecimal.ZERO;
+
         Order order = Order.builder()
                 .userId(req.getUserId())
                 .orderNumber(generatedOrderNumber)
                 .buyerName(req.getBuyerName())
                 .recipientName(req.getRecipientName())
-                // below two fields require you to add columns in entity (see note). If you don't want them, remove these lines.
                 .recipientPhone(req.getRecipientPhone())
                 .buyerEmail(req.getEmail())
                 .shippingAddress(req.getShippingAddress())
                 .status(OrderStatus.PENDING_PAYMENT)
-                .totalAmount(total)
+
+                .totalAmount(totalPayable)
+
                 .paymentMethod(req.getPaymentMethod())
                 .shippingMethod(req.getShippingMethod())
-                .shippingFee(req.getShipping())
-                .discountAmount(req.getDiscountAmount() != null ? req.getDiscountAmount() : 0L)
+
+                .shippingFee(shippingFeeVnd)
+                .discountAmount(discountVnd)
+
                 .promoCode(req.getPromoCode())
                 .build();
+
 
         order = orderRepo.save(order);
         log.info("Saved order id={} orderNumber={}", order.getId(), order.getOrderNumber());
@@ -166,15 +181,21 @@ public class OrderService {
                     oi.getVariantId(), oi.getQuantity(), oi.getUnitPrice(), oi.getProductName());
         }
 
-        // persist order again to ensure relationship saved and total is consistent
-        // (optionally recompute total from items to be safe)
-        BigDecimal recomputed = order.getItems().stream()
+
+        BigDecimal recomputedSubtotal = order.getItems().stream()
                 .map(OrderItem::getLineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        order.setTotalAmount(recomputed);
+
+        BigDecimal recomputedTotal = recomputedSubtotal
+                .subtract(BigDecimal.valueOf(discountVnd))
+                .add(BigDecimal.valueOf(shippingFeeVnd));
+        if (recomputedTotal.signum() < 0) recomputedTotal = BigDecimal.ZERO;
+
+        order.setShippingFee(shippingFeeVnd);
+        order.setDiscountAmount(discountVnd);
+        order.setTotalAmount(recomputedTotal);
         orderRepo.save(order);
 
-        // 4) create reservation
         Long reservationId = null;
         try {
             CreateReservationRequest r = CreateReservationRequest.builder()
@@ -201,7 +222,6 @@ public class OrderService {
             throw new RuntimeException("Reservation service error: " + ex.getMessage(), ex);
         }
 
-        // 5) create payment (unchanged)
         try {
             BigDecimal totalAmount = order.getTotalAmount() == null ? BigDecimal.ZERO : order.getTotalAmount();
             long amountVnd = totalAmount.setScale(0, RoundingMode.HALF_UP).longValue();
@@ -256,7 +276,6 @@ public class OrderService {
             throw new RuntimeException("Payment service error: " + ex.getMessage(), ex);
         }
 
-        // Return comprehensive CreateOrderResponse including recipient/buyer info
         return CreateOrderResponse.builder()
                 .orderId(order.getId())
                 .status(order.getStatus().name())
@@ -267,6 +286,7 @@ public class OrderService {
                 .email(order.getBuyerEmail())
                 .orderNumber(order.getOrderNumber())
                 .total(order.getTotalAmount() == null ? null : order.getTotalAmount().setScale(0, RoundingMode.HALF_UP).longValue())
+                .shippingFee(order.getShippingFee())
                 .build();
     }
 
@@ -278,11 +298,7 @@ public class OrderService {
         return mapper.toResponse(o);
     }
 
-    /**
-     * Được payment-service gọi khi IPN đã xác thực:
-     *  - status = SUCCESS => confirm reservation, set order=PAID
-     *  - status = FAILED  => cancel reservation, set order=FAILED
-     */
+
     @Transactional
     public void updatePaymentStatus(Long orderId, String paymentStatus) {
         Order o = orderRepo.findById(orderId).orElseThrow(() -> new RuntimeException("Order not found"));
@@ -381,10 +397,7 @@ public class OrderService {
         return s.collect(Collectors.toList());
     }
 
-    /**
-     * Map Order entity -> OrderResponse dto using existing mapper if available.
-     * If you already have mapper.toResponse(o) use that; else implement basic mapping here.
-     */
+
     public OrderResponse toResponse(Order o) {
         // prefer using your mapper if present
         if (mapper != null) {
@@ -397,6 +410,8 @@ public class OrderService {
                 .status(o.getStatus() == null ? null : o.getStatus().name())
                 .totalAmount(o.getTotalAmount())
                 .payUrl(o.getPayUrl())
+                .shippingFee(o.getShippingFee())
+                .discountAmount(o.getDiscountAmount())
                 .items(o.getItems().stream().map(it -> OrderResponse.Item.builder()
                                 .productId(it.getProductId())
                                 .variantId(it.getVariantId())
@@ -409,9 +424,7 @@ public class OrderService {
         return resp;
     }
 
-    /**
-     * Update order status by enum name (string). Throws runtime if not found.
-     */
+
     @Transactional
     public void updateStatus(Long orderId, String statusStr) {
         Order o = orderRepo.findById(orderId).orElseThrow(() -> new RuntimeException("Order not found"));
@@ -425,9 +438,6 @@ public class OrderService {
         }
     }
 
-    /**
-     * Arrange shipping: save shipping info and update status.
-     */
     @Transactional
     public void arrangeShipping(Long orderId, ShippingRequest req) {
         Order o = orderRepo.findById(orderId).orElseThrow(() -> new RuntimeException("Order not found"));
@@ -439,12 +449,9 @@ public class OrderService {
             try {
                 o.setEstimatedDelivery(LocalDate.parse(req.getEstimatedDelivery()));
             } catch (Exception ex) {
-                // ignore parse error, or store raw string into a text field if available
             }
         }
 
-        // status transition: if pending/pending_payment -> CONFIRMED (admin accepted)
-        // if already paid -> SHIPPED (optionally)
         if (o.getStatus() == OrderStatus.PENDING || o.getStatus() == OrderStatus.PENDING_PAYMENT) {
             o.setStatus(OrderStatus.CONFIRMED);
         } else if (o.getStatus() == OrderStatus.PAID) {
@@ -455,7 +462,6 @@ public class OrderService {
         orderRepo.save(o);
     }
 
-    // OrderService.java
 
     @Transactional
     public Map<String, Object> adminCancelOrRefund(Long id) {
@@ -464,7 +470,7 @@ public class OrderService {
         // PAID -> không cancel kiểu thường, mà chuyển CANCELLED + refundRequested=true
         if (o.getStatus() == OrderStatus.PAID) {
             o.setStatus(OrderStatus.CANCELLED);
-            o.setRefundRequested(true); // ✅ cần field
+            o.setRefundRequested(true); //
             o.setUpdatedAt(LocalDateTime.now());
             orderRepo.save(o);
 
@@ -509,12 +515,10 @@ public class OrderService {
             );
         }
 
-        // chưa PAID -> xóa thật, xóa cả items + trả reservation (nếu còn)
         if (o.getReservationId() != null) {
             try { reservationClient.cancel(o.getReservationId()); } catch (Exception ignored) {}
         }
 
-        // ✅ xóa items trước để chắc chắn
         itemRepo.deleteByOrderId(o.getId());
         orderRepo.delete(o);
 

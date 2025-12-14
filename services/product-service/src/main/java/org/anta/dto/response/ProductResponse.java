@@ -35,4 +35,10 @@ public class ProductResponse {
 
     private List<ProductVariantResponse> variants;
 
+    private String categoryName;
+
+    private String categorySlug;
+
+    private String categoryTitle;
+
 }

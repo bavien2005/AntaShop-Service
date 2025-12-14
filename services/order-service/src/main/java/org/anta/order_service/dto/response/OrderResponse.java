@@ -1,5 +1,6 @@
 package org.anta.order_service.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -28,7 +29,9 @@ public class OrderResponse {
     private String recipientPhone;
     private String buyerEmail;
     private Boolean refundRequested;
-
+    @JsonAlias({"shippingFee","shipping_fee","shippingCost","shipping_cost","shipping"})
+    private Long shippingFee;
+    private Long discountAmount;
     @Getter
     @Setter
     @NoArgsConstructor

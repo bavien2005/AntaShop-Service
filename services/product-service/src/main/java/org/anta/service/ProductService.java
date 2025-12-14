@@ -49,7 +49,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<ProductResponse> getAllProduct() {
         List<Product> products = productRepository.findAll();
-
+        Map<Long, CategoryResponse> catById = buildCategoryIndex();
         return products.stream().map(product -> {
             ProductResponse response = productMapper.toResponse(product);
 
@@ -76,7 +76,7 @@ public class ProductService {
 
             if (response.getRating() == null) response.setRating(5);
             if (response.getSales() == null) response.setSales(0L);
-
+            attachCategoryInfo(response, catById);
             return response;
         }).collect(Collectors.toList());
     }
@@ -107,7 +107,14 @@ public class ProductService {
         if (response.getImages() != null && !response.getImages().isEmpty()) {
             response.setThumbnail(response.getImages().get(0));
         }
-
+        if (response.getCategoryId() != null) {
+            try {
+                CategoryResponse c = categoryClient.getCategoryById(response.getCategoryId());
+                response.setCategoryName(c.getName());
+                response.setCategorySlug(c.getSlug());
+                response.setCategoryTitle(c.getTitle());
+            } catch (Exception ignored) {}
+        }
         double displayPrice = computeDisplayPrice(product);
         response.setPrice(BigDecimal.valueOf(displayPrice));
         if (response.getRating() == null) response.setRating(5);
@@ -742,22 +749,33 @@ public class ProductService {
             products = productRepository.findAll();
         }
 
-        // map -> ProductResponse (tính variants/stock/price/thumbnail như bạn đang làm)
+        // ✅ THÊM: build category index 1 lần
+        Map<Long, CategoryResponse> catById = buildCategoryIndex();
+
         return products.stream().map(p -> {
             ProductResponse r = productMapper.toResponse(p);
+
             List<ProductVariant> vars = productVariantRepository.findByProductId(p.getId());
             r.setVariants(productVariantMapper.toResponseList(vars));
+
             int total = (vars==null||vars.isEmpty())
                     ? (p.getTotalStock()==null?0:p.getTotalStock())
                     : vars.stream().mapToInt(v -> v.getStock()==null?0:v.getStock()).sum();
             r.setTotalStock(total);
+
             if (r.getImages()!=null && !r.getImages().isEmpty()) r.setThumbnail(r.getImages().get(0));
+
             r.setPrice(BigDecimal.valueOf(computeDisplayPrice(p)));
             if (r.getRating()==null) r.setRating(5);
             if (r.getSales()==null) r.setSales(0L);
+
+            // ✅ THÊM: gắn thông tin danh mục
+            attachCategoryInfo(r, catById);
+
             return r;
         }).toList();
     }
+
 
     @Transactional
     public int deleteProductsByCategory(Long categoryId) {
@@ -773,5 +791,20 @@ public class ProductService {
         }
         return ids.size();
     }
+    private Map<Long, CategoryResponse> buildCategoryIndex() {
+        Map<String, List<CategoryResponse>> grouped = categoryClient.getGrouped();
+        return grouped.values().stream()
+                .flatMap(List::stream)
+                .filter(c -> c.getId() != null)
+                .collect(Collectors.toMap(CategoryResponse::getId, c -> c, (a,b) -> a));
+    }
 
+    private void attachCategoryInfo(ProductResponse r, Map<Long, CategoryResponse> catById) {
+        if (r == null || r.getCategoryId() == null) return;
+        CategoryResponse c = catById.get(r.getCategoryId());
+        if (c == null) return;
+        r.setCategoryName(c.getName());
+        r.setCategorySlug(c.getSlug());
+        r.setCategoryTitle(c.getTitle());
+    }
 }
