@@ -24,7 +24,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
       ) AS week,
       SUM(oi.quantity * oi.unit_price) AS revenue
     FROM order_items oi
-    JOIN orders o ON oi.order_id = o.order_id
+    JOIN orders o ON oi.order_id = o.id
     WHERE o.status IN ('PAID','COMPLETED')
     GROUP BY 
       CONCAT(
