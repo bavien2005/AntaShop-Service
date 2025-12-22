@@ -2,9 +2,11 @@
 package org.anta.order_service.service;
 
 import lombok.RequiredArgsConstructor;
+import org.anta.order_service.dto.response.ProductSoldQtyDTO;
 import org.anta.order_service.dto.response.WeeklyRevenueDTO;
 import org.anta.order_service.repository.OrderItemRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,4 +30,19 @@ public class OrderRevenueService {
 
         return result;
     }
+
+
+
+    @Transactional(readOnly = true)
+    public List<ProductSoldQtyDTO> getSoldQtyByProductFromPaidOrDelivered() {
+        List<Object[]> rows = orderItemsRepository.sumSoldQtyByProductFromPaidOrDelivered();
+
+        return rows.stream()
+                .map(r -> new ProductSoldQtyDTO(
+                        r[0] == null ? null : ((Number) r[0]).longValue(),
+                        r[1] == null ? 0L : ((Number) r[1]).longValue()
+                ))
+                .toList();
+    }
+
 }

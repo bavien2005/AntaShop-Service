@@ -25,7 +25,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
       SUM(oi.quantity * oi.unit_price) AS revenue
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.id
-    WHERE o.status IN ('PAID','COMPLETED')
+    WHERE o.status IN ('PAID','DELIVERED')
     GROUP BY 
       CONCAT(
         YEAR(o.created_at),
@@ -45,4 +45,18 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     @Modifying
     @Query("DELETE FROM OrderItem oi WHERE oi.order.id = :orderId")
     void deleteByOrderId(@Param("orderId") Long orderId);
+
+    @Query(value = """
+    SELECT 
+      oi.product_id AS productId,
+      COALESCE(SUM(oi.quantity), 0) AS soldQty
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.status IN ('PAID','DELIVERED')
+      AND oi.product_id IS NOT NULL
+    GROUP BY oi.product_id
+    ORDER BY soldQty DESC
+""", nativeQuery = true)
+    List<Object[]> sumSoldQtyByProductFromPaidOrDelivered();
+
 }

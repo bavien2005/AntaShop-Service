@@ -2,6 +2,7 @@
 package org.anta.order_service.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.anta.order_service.dto.response.ProductSoldQtyDTO;
 import org.anta.order_service.dto.response.WeeklyRevenueDTO;
 import org.anta.order_service.service.OrderRevenueService;
 import org.springframework.http.ResponseEntity;
@@ -20,5 +21,10 @@ public class OrderRevenueController {
     @GetMapping("/weekly")
     public ResponseEntity<List<WeeklyRevenueDTO>> getActualRevenueWeekly() {
         return ResponseEntity.ok(orderRevenueService.getActualRevenueWeekly());
+    }
+
+    @GetMapping("/products/sold-qty")
+    public ResponseEntity<List<ProductSoldQtyDTO>> getSoldQtyByProduct() {
+        return ResponseEntity.ok(orderRevenueService.getSoldQtyByProductFromPaidOrDelivered());
     }
 }
