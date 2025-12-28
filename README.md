@@ -184,16 +184,6 @@ GET /api/orders/user/{userId}
 
 ---
 
-# 👥 Team
-
-### 👨‍💻 Leader  
-• **Nguyễn Bá Viên**  
-• 📧 **nguyenbavien.26092005@gmail.com**
-
-### 👥 Members  
-• **Nguyễn Danh Thao**  
-• **Trần Thiên Phú**
-
 
 ---
 
