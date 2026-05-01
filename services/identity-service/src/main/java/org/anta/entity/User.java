@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.anta.enums.Role;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -41,5 +42,8 @@ public class User {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+
+    @Column(name = "work_start_date")
+    private LocalDate workStartDate;
 }
 

@@ -3,7 +3,6 @@ package org.anta.cloud_service.cloud_service.service;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.anta.cloud_service.cloud_service.entity.FileMetadata;
 import org.anta.cloud_service.cloud_service.repository.FileMetadataRepository;

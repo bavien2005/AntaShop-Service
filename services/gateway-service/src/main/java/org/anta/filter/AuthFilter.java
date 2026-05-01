@@ -36,6 +36,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/momo",
             "/api/categories",
             "/api/dashboard",
+            "/api/staff",
             "/actuator"
     );
 

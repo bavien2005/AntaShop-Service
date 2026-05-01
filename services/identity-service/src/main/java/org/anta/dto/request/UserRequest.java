@@ -3,6 +3,8 @@ package org.anta.dto.request;
 import org.anta.enums.Role;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 public class UserRequest {
 
@@ -17,4 +19,6 @@ public class UserRequest {
     private Role role;
 
     private String phoneNumber;
+
+    private LocalDate workStartDate;
 }

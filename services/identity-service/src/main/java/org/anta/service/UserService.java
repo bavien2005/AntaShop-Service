@@ -4,6 +4,7 @@ import org.anta.dto.dashboard.UserMonthlyStatsResponse;
 import org.anta.dto.request.UserRequest;
 import org.anta.dto.response.UserResponse;
 import org.anta.entity.User;
+import org.anta.enums.Role;
 import org.anta.mapper.UserMapper;
 import org.anta.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -104,4 +105,34 @@ public class UserService {
                 .toList();
     }
 
+
+
+
+    // new method
+    @Transactional(readOnly = true)
+    public List<UserResponse> getAllStaff() {
+        return userRepository.findAllByRole(Role.STAFF)
+                .stream()
+                .map(userMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public UserResponse addStaff(UserRequest req) {
+        // ép role = STAFF
+        req.setRole(Role.STAFF);
+        return addUser(req); // tái sử dụng logic addUser (đã encode password + check unique)
+    }
+
+    @Transactional
+    public UserResponse updateStaff(Long id, UserRequest req) {
+        // ép role = STAFF (nếu muốn staff luôn là staff)
+        req.setRole(Role.STAFF);
+        return updateUser(id, req);
+    }
+
+    @Transactional
+    public void deleteStaff(Long id) {
+        deleteUser(id);
+    }
 }
